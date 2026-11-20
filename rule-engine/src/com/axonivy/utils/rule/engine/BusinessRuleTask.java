@@ -2,9 +2,12 @@ package com.axonivy.utils.rule.engine;
 
 import java.net.URI;
 
+import com.axonivy.utils.rule.engine.deploy.ModelDeployer;
 import com.axonivy.utils.rule.engine.program.internal.RuleTaskEditor;
 import com.axonivy.utils.rule.engine.program.internal.RuleTaskExecutor;
 
+import ch.ivyteam.ivy.application.project.Project;
+import ch.ivyteam.ivy.environment.Ivy;
 import ch.ivyteam.ivy.process.program.activity.AbortableExecution;
 import ch.ivyteam.ivy.process.program.activity.ProgramExecutor;
 import ch.ivyteam.ivy.process.program.element.ProgramIconDecorator;
@@ -43,6 +46,24 @@ public class BusinessRuleTask implements ProgramExecutor, ProgramEditorUi, Progr
         }
       }
     };
+  }
+
+  /**
+   * On project start, e.g. after a deployment: the .dmn files of the project are registered as versions.
+   * If the runtime is not reachable now, they are registered with the first evaluation.
+   */
+  @Override
+  public void start() {
+    try {
+      Project project = Project.current();
+      var config = RuleEngineConfig.fromVariables();
+      if (project == null || !config.autoDeploy() || config.url().isBlank()) {
+        return;
+      }
+      ModelDeployer.deployAll(project, RuleEngine.client(config), config);
+    } catch (RuntimeException ex) {
+      Ivy.log().debug("Rule engine: models are registered with the first evaluation: " + ex.getMessage());
+    }
   }
 
   @Override

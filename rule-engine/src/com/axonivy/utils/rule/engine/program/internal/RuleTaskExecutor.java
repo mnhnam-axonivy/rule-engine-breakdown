@@ -15,7 +15,9 @@ import com.axonivy.utils.rule.engine.api.EvaluateRequest;
 import com.axonivy.utils.rule.engine.api.EvaluateResponse;
 import com.axonivy.utils.rule.engine.api.ModelInfo;
 import com.axonivy.utils.rule.engine.client.RuleEngineClient;
+import com.axonivy.utils.rule.engine.client.exception.RuleEngineApiException;
 import com.axonivy.utils.rule.engine.client.exception.RuleEngineException;
+import com.axonivy.utils.rule.engine.deploy.ModelDeployer;
 import com.axonivy.utils.rule.engine.dmn.DmnModelInfo;
 import com.axonivy.utils.rule.engine.dmn.ProjectDmnFiles;
 import com.axonivy.utils.rule.engine.dmn.ProjectDmnFiles.LoadedDmn;
@@ -77,9 +79,25 @@ public class RuleTaskExecutor {
     RuleEngineClient client = RuleEngine.client(config);
     String runtimeModel = config.runtimeModel(selection.model());
     Optional<LoadedDmn> dmn = ProjectDmnFiles.find(Project.current(), selection.model()).map(ProjectDmnFiles::load);
+    boolean deploy = config.autoDeploy() && dmn.isPresent();
 
     var input = input(inputNames(selection, dmn, client, runtimeModel), selection, dataClass);
-    EvaluateResponse response = client.evaluate(runtimeModel, request(selection, input));
+
+    if (deploy) {
+      ModelDeployer.ensureRegistered(client, runtimeModel, dmn.get());
+    }
+    EvaluateResponse response;
+    try {
+      response = client.evaluate(runtimeModel, request(selection, input));
+    } catch (RuleEngineApiException ex) {
+      if (!deploy || !ex.isModelMissing()) {
+        throw ex;
+      }
+      // the runtime lost the model, e.g. it was started with an empty volume: load it again
+      ModelDeployer.forget(client, runtimeModel);
+      ModelDeployer.register(client, runtimeModel, dmn.get());
+      response = client.evaluate(runtimeModel, request(selection, input));
+    }
     mapResults(response, selection, dataClass);
   }
 
