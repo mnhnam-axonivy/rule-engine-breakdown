@@ -56,7 +56,7 @@ Java 25 and Maven. The Ivy modules are built with the project-build-plugin, whic
 
 | Command | What runs |
 | --- | --- |
-| `mvn verify` | Everything without Docker. |
+| `mvn verify` | Everything without Docker: tests of the runtime (REST API, version rules, DMN engine) and tests of the connector with a mocked runtime. |
 | `docker compose build` | The image `axonivy/rule-engine-runtime:dev`, built from the root of the repository. |
 | `mvn test -Pperformance -f rule-engine-runtime` | Performance baseline, written to `rule-engine-runtime/target/performance-baseline.md`. |
 | `mvn quarkus:dev -f rule-engine-runtime` | Runtime in dev mode on port 8090. |
@@ -135,3 +135,7 @@ The position of the matching rule does not matter: the engine evaluates all rows
   multi-select widget, the first selected entry is used.
 
 - **Field picker**: fields are entered as field paths in text fields, until Core delivers a data picker.
+
+- **Mapping by name only**: inputs and results are always found by name. A value that has to be prepared, or a
+  field with another name, is set in the process data before the element, for example in a Script. Input fields
+  and Output fields only describe a new DMN.
