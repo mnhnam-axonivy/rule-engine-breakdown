@@ -55,6 +55,7 @@ Java 25 and Maven. The Ivy modules are built with the project-build-plugin, whic
 | --- | --- |
 | `mvn verify` | Everything without Docker. |
 | `docker compose build` | The image `axonivy/rule-engine-runtime:dev`, built from the root of the repository. |
+| `mvn test -Pperformance -f rule-engine-runtime` | Performance baseline, written to `rule-engine-runtime/target/performance-baseline.md`. |
 | `mvn quarkus:dev -f rule-engine-runtime` | Runtime in dev mode on port 8090. |
 
 ## Spike result: runtime loading (MARP-4893)
@@ -72,6 +73,25 @@ Runtime loading works and is used. The fallback (Kogito code generation with a p
   `DmnCompiler` and `DmnEvaluator` and covered by tests, so an upgrade of KIE shows a break at once.
 - Inputs are type-checked (`rule.engine.type-check=true`): a value outside of the allowed values of an enum
   fails the evaluation instead of silently matching no rule.
+
+## Performance baseline (MARP-4893)
+
+Decision table with 1,000 rules, 2 inputs (number range, string), hit policy FIRST, 206 KB of DMN.
+Measured on a 12 core Windows 11 machine with Java 25, runtime and client on the same host.
+
+| Step | Time |
+| --- | --- |
+| Validate (schema, model, compilation), first call | 3.2 s |
+| Compile (load a version) | 0.7 s |
+
+| Evaluation | mean | p50 | p95 | p99 |
+| --- | --- | --- | --- | --- |
+| In the engine, last rule matches | 0.26 ms | 0.28 ms | 0.43 ms | 0.56 ms |
+| In the engine, no rule matches | 0.36 ms | 0.37 ms | 0.58 ms | 0.77 ms |
+| REST API, 1 client | 1.59 ms | 1.54 ms | 2.34 ms | 2.75 ms |
+
+Throughput through the REST API with 8 parallel clients: 2,243 evaluations per second.
+The position of the matching rule does not matter: the engine evaluates all rows of a table.
 
 ## Decisions taken in this implementation
 
