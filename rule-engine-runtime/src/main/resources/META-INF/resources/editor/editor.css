@@ -43,6 +43,7 @@ code { padding: 0 4px; border-radius: 3px; background: #eef1f4; font: 12.5px Con
 .side { overflow: auto; padding: 14px 14px 24px; border-right: 1px solid var(--line); background: var(--surface); }
 .side section + section { margin-top: 22px; }
 .side h2 { margin: 0 0 8px; color: var(--muted); font-size: 11.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .hint { margin: 6px 0; color: var(--muted); font-size: 12.5px; }
 .hint.error { color: var(--err); }
 
@@ -57,6 +58,24 @@ code { padding: 0 4px; border-radius: 3px; background: #eef1f4; font: 12.5px Con
 .model.selected { border-color: var(--primary); background: var(--primary-light); }
 .model-name { font-weight: 600; overflow-wrap: anywhere; }
 .model-meta { color: var(--muted); font-size: 12px; white-space: nowrap; }
+
+.versions { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 12.5px; }
+.versions col.c-version { width: 52px; }
+.versions col.c-status { width: 68px; }
+.versions col.c-source { width: 58px; }
+.versions col.c-act { width: 104px; }
+.versions th { padding: 3px 6px 3px 0; color: var(--faint); font-weight: 600; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.versions td { padding: 4px 6px 4px 0; border-top: 1px solid var(--line); vertical-align: middle; }
+.versions tr.opened td { background: var(--primary-light); }
+.versions tr.opened td:first-child { box-shadow: inset 3px 0 var(--primary); padding-left: 6px; }
+.versions td.author { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.versions td.act { text-align: right; white-space: nowrap; }
+
+.status { display: inline-block; padding: 0 7px; border: 1px solid var(--line); border-radius: 9px; font-size: 11.5px; line-height: 17px; }
+.status.active { border-color: var(--ok); background: var(--ok-bg); color: var(--ok); font-weight: 600; }
+.status.draft { border-color: #e2c27a; background: var(--warn-bg); color: var(--warn); }
+.status.approved { border-color: #8fc1d4; color: var(--primary-dark); }
+.status.retired { color: var(--faint); }
 
 button {
   padding: 5px 11px; border: 1px solid var(--line); border-radius: 5px;

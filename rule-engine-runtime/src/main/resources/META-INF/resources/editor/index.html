@@ -31,6 +31,19 @@
         <ul id="models" class="models"></ul>
       </section>
 
+      <section id="versions-box" hidden>
+        <div class="section-head">
+          <h2>Versions of <span id="versions-model"></span></h2>
+          <button id="rollback" type="button" class="link" hidden>Roll back</button>
+        </div>
+        <table class="versions">
+          <colgroup><col class="c-version"><col class="c-status"><col class="c-source"><col class="c-author"><col class="c-act"></colgroup>
+          <thead>
+            <tr><th>Version</th><th>Status</th><th>Source</th><th>Author</th><th></th></tr>
+          </thead>
+          <tbody id="versions"></tbody>
+        </table>
+      </section>
 
     </aside>
 

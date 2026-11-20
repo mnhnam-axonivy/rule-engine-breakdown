@@ -16,7 +16,7 @@
 
   const state = {
     models: [],
-    selected: null, // the model that is open
+    selected: null, // the model whose versions are listed
     versions: [],
     doc: null, // what the editor shows: { kind: 'runtime', model, version, status, source }
     editor: null,
@@ -51,6 +51,7 @@
     return node;
   }
 
+  const date = value => (value ? new Date(value).toLocaleString() : '');
   const modelPath = model => 'models/' + encodeURIComponent(model);
 
   // ── messages ────────────────────────────────────────────────────────────────
@@ -188,6 +189,32 @@
         else say('error', e.message);
       }
     } else state.versions = [];
+    renderVersions();
+  }
+
+  function renderVersions() {
+    $('versions-box').hidden = !state.selected;
+    $('versions-model').textContent = state.selected || '';
+    const versions = state.versions.slice().sort((a, b) => b.version - a.version);
+    const active = versions.find(v => v.status === 'ACTIVE');
+    const rollback = $('rollback');
+    rollback.hidden = !(active && active.previousVersion);
+    rollback.title = active && active.previousVersion ? 'Make version ' + active.previousVersion + ' the active one again' : '';
+    $('versions').replaceChildren(...versions.map(v => {
+      const opened = state.doc && state.doc.kind === 'runtime' && state.doc.model === v.model && state.doc.version === v.version;
+      const tip = [v.description, 'created ' + date(v.createdAt),
+        v.activatedAt ? 'activated ' + date(v.activatedAt) + (v.activatedBy ? ' by ' + v.activatedBy : '') : ''].filter(Boolean).join('\n');
+      return el('tr', { className: opened ? 'opened' : null, title: tip, 'data-version': String(v.version) },
+        el('td', { text: String(v.version) }),
+        el('td', null, el('span', { className: 'status ' + v.status.toLowerCase(), text: v.status.toLowerCase() })),
+        el('td', { text: v.source.toLowerCase() }),
+        el('td', { className: 'author', text: v.author || '', title: v.author || null }),
+        el('td', { className: 'act' },
+          el('button', { type: 'button', className: 'link', text: 'Open', onclick: () => openVersion(v.model, v.version) }),
+          v.status === 'ACTIVE' ? null : ' ',
+          v.status === 'ACTIVE' ? null
+            : el('button', { type: 'button', className: 'link', text: 'Activate', 'data-activate': String(v.version), onclick: () => activateVersion(v.model, v.version) })));
+    }));
   }
 
   async function openVersion(model, version, { confirmed = false } = {}) {
@@ -208,6 +235,28 @@
     }
   }
 
+  async function activateVersion(model, version) {
+    const author = requireAuthor();
+    if (!author) return;
+    await busy(async () => {
+      await api(modelPath(model) + '/versions/' + version + '/activate',
+        { method: 'POST', type: 'application/json', body: JSON.stringify({ user: author }) });
+      await refresh();
+      say('ok', 'Version ' + version + ' of ' + model + ' is active. The next evaluation uses it.');
+    });
+  }
+
+  async function rollback() {
+    const model = state.selected;
+    const author = requireAuthor();
+    if (!model || !author) return;
+    await busy(async () => {
+      const version = await api(modelPath(model) + '/rollback', { method: 'POST', query: { user: author } });
+      await refresh();
+      say('ok', 'Rolled back: version ' + version.version + ' of ' + model + ' is active again.');
+    });
+  }
+
   /** Reloads models and versions after a change, and what the toolbar says about the opened version. */
   async function refresh() {
     await loadModels();
@@ -218,6 +267,7 @@
       if (info) Object.assign(doc, { status: info.status, source: info.source });
     }
     renderToolbar();
+    renderVersions();
   }
 
   // ── the editor ──────────────────────────────────────────────────────────────
@@ -249,6 +299,7 @@
     state.editor = editor;
     $('empty').hidden = true;
     renderToolbar();
+    renderVersions();
   }
 
   function markReady() {
@@ -342,7 +393,7 @@
       if (version.created) {
         text = activate
           ? 'Saved as version ' + version.version + ' of ' + model + ' and activated. The next evaluation uses it.'
-          : 'Saved as version ' + version.version + ' of ' + model + ', a draft.';
+          : 'Saved as version ' + version.version + ' of ' + model + ', a draft. Activate it in the list when it should go live.';
       } else {
         text = 'Nothing new: this content is version ' + version.version + ' of ' + model + ' already.';
         if (activate && version.status !== 'ACTIVE') {
@@ -388,6 +439,7 @@
     $('check').addEventListener('click', check);
     $('save-draft').addEventListener('click', () => saveToRuntime(false));
     $('save-activate').addEventListener('click', () => saveToRuntime(true));
+    $('rollback').addEventListener('click', rollback);
     window.addEventListener('message', event => {
       const frame = $('editor').querySelector('iframe');
       if (frame && event.source === frame.contentWindow && event.data && event.data.type === 'kogitoEditor_ready') markReady();

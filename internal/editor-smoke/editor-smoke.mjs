@@ -8,7 +8,7 @@
  *                            the same against a runtime that runs already. It adds versions to it!
  *
  * The page is used like a person would: API key prompt, open a model, change a rule, save and activate,
- * a model the runtime rejects.
+ * activate the old version, roll back, a model the runtime rejects.
  * The first change is made in the KIE editor itself, like a person does it: select the decision, "Edit", type
  * into a cell. Later changes use the editor's API (setContent). Every request outside the runtime is blocked
  * and counted as a failure.
@@ -214,6 +214,7 @@ try {
   await sleep(2500); // let the editor draw
   const toolbar = await page.$eval('#doc-state', n => n.textContent);
   check(toolbar === 'version 1 · active · from project', 'the toolbar says which version is open: ' + toolbar);
+  check(await page.$$eval('#versions tr', rows => rows.length) === 1, 'the versions of the model are listed');
   await shot(page, '02-opened');
 
   console.log('\nChange a rule and save it');
@@ -234,6 +235,13 @@ try {
   check(await page.evaluate(() => location.hash) === '#discount/2', 'the address points to version 2');
   check(await page.$eval('#doc-dirty', n => n.hidden), 'after saving, nothing is unsaved');
   await shot(page, '03-saved');
+
+  console.log('\nActivate and roll back');
+  await act(page, '#versions tr[data-version="1"] button[data-activate]', 'ok');
+  check(await evaluate() === 15, 'Activate on version 1: 15 again');
+  text = await act(page, '#rollback', 'ok');
+  check(text.includes('version 2') && await evaluate() === 20, 'Roll back: version 2 is active again, 20');
+  await shot(page, '04-rolled-back');
 
   console.log('\nThe same content again, and a model the runtime rejects');
   text = await act(page, '#save-draft', 'ok');
