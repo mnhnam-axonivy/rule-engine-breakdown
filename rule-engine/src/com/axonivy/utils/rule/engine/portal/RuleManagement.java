@@ -13,9 +13,12 @@ import org.apache.commons.lang3.StringUtils;
 
 import com.axonivy.utils.rule.engine.RuleEngine;
 import com.axonivy.utils.rule.engine.RuleEngineConfig;
+import com.axonivy.utils.rule.engine.api.ActivateRequest;
 import com.axonivy.utils.rule.engine.api.Message;
 import com.axonivy.utils.rule.engine.api.ModelInfo;
 import com.axonivy.utils.rule.engine.api.ModelVersion;
+import com.axonivy.utils.rule.engine.api.RegisterVersionRequest;
+import com.axonivy.utils.rule.engine.api.VersionSource;
 import com.axonivy.utils.rule.engine.client.RuleEngineClient;
 import com.axonivy.utils.rule.engine.client.exception.RuleEngineApiException;
 import com.axonivy.utils.rule.engine.client.exception.RuleEngineTimeoutException;
@@ -153,6 +156,65 @@ public final class RuleManagement {
       content.put("version", wanted);
       content.put("dmn", client.content(runtimeModel, wanted.intValue()));
       return content;
+    });
+  }
+
+  /** @return valid and messages: the findings of the DMN engine, as text */
+  public static RuleManagementAnswer validate(String dmn) {
+    return answer(() -> {
+      var result = client(RuleEngineConfig.fromVariables()).validate(dmn);
+      var validation = new LinkedHashMap<String, Object>();
+      validation.put("valid", result.valid());
+      validation.put("messages", result.messages().stream().map(RuleManagement::text).toList());
+      return validation;
+    });
+  }
+
+  /**
+   * Stores a changed model as a new version from the Portal. The runtime checks it first and refuses a model with
+   * errors (code INVALID_MODEL, the findings in the details). A version activated from the Portal is never
+   * replaced by a project deployment.
+   *
+   * @param activate true: go live now; false: keep it as a draft
+   * @return the version, see {@link #version(ModelVersion, String)}. Its <code>created</code> is false if the runtime
+   *         had exactly this content already.
+   */
+  public static RuleManagementAnswer save(String model, String dmn, String author, String description, Boolean activate) {
+    return answer(() -> {
+      if (StringUtils.isBlank(model) || StringUtils.isBlank(dmn)) {
+        throw new RuleEngineApiException(400, RuleEngineApiException.INVALID_REQUEST,
+            "A model name and its DMN are required.", null, null);
+      }
+      var config = RuleEngineConfig.fromVariables();
+      ModelVersion version = client(config).registerVersion(config.runtimeModel(model), RegisterVersionRequest.builder()
+          .content(dmn)
+          .author(author)
+          .description(StringUtils.trimToNull(description))
+          .source(VersionSource.PORTAL)
+          .activate(Boolean.TRUE.equals(activate))
+          .build());
+      return version(version, config.modelPrefix());
+    });
+  }
+
+  /** Makes a version live at once. The version that was active is retired. */
+  public static RuleManagementAnswer activate(String model, Integer version, String author) {
+    return answer(() -> {
+      if (version == null || version.intValue() <= 0) {
+        throw new RuleEngineApiException(400, RuleEngineApiException.INVALID_REQUEST,
+            "Which version of '" + model + "' should be activated?", null, null);
+      }
+      var config = RuleEngineConfig.fromVariables();
+      return version(client(config).activate(config.runtimeModel(model), version.intValue(),
+          ActivateRequest.now(author)), config.modelPrefix());
+    });
+  }
+
+  /** Activates the version that was active before the current one. */
+  public static RuleManagementAnswer rollback(String model, String author) {
+    return answer(() -> {
+      var config = RuleEngineConfig.fromVariables();
+      return version(client(config).rollback(config.runtimeModel(model), author), config.modelPrefix());
     });
   }
 
