@@ -13,6 +13,37 @@
     },
     {
       "name": "errorMessage"
+    },
+    {
+      "name": "lastTotal",
+      "type": "java.math.BigDecimal",
+      "comment": "The total of the last Apply"
+    },
+    {
+      "name": "previousTotal",
+      "type": "java.math.BigDecimal",
+      "comment": "The total of the Apply before"
+    },
+    {
+      "name": "ruleVersion",
+      "type": "java.lang.Integer",
+      "comment": "The version of the model that decided, null if none did"
+    },
+    {
+      "name": "hitPolicy"
+    },
+    {
+      "name": "ruleInputs",
+      "type": "List<String>",
+      "comment": "The input columns of the table discount in that version"
+    },
+    {
+      "name": "ruleOutputs",
+      "type": "List<String>"
+    },
+    {
+      "name": "rules",
+      "type": "List<com.axonivy.utils.rule.engine.demo.RuleRow>"
     }
   ]
 }
