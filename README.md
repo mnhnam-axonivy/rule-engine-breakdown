@@ -24,8 +24,8 @@ This repository is built pull request by pull request, following [BREAKDOWN.md](
 
 | Module | Content |
 | --- | --- |
-| [rule-engine-core](rule-engine-core) | Ivy project, plain Java, shared by the connector and the runtime: the API of the runtime and the DMN generator. |
-| [rule-engine-runtime](rule-engine-runtime) | Quarkus service: loads DMN models at runtime, stores their versions, evaluates decisions. Compiles the sources of `rule-engine-core` into its own build. |
+| [rule-engine-core](rule-engine-core) | Ivy project, plain Java, shared by the connector and the runtime: the API of the runtime (`com.axonivy.utils.rule.engine.api`: requests, responses, statuses) and the DMN generator. |
+| [rule-engine-runtime](rule-engine-runtime) | Quarkus service: loads DMN models at runtime, stores their versions, evaluates decisions. Compiles the sources of `rule-engine-core` into its own build. Contract: [openapi.yaml](rule-engine-runtime/openapi.yaml). |
 | [rule-engine](rule-engine) | Ivy connector: program element `BusinessRuleTask`, client of the runtime, mapping. Requires `rule-engine-core`. |
 | [rule-engine-demo](rule-engine-demo) | The demo. |
 | [rule-engine-test](rule-engine-test) | Tests of the connector. |
@@ -44,4 +44,5 @@ Java 25 and Maven. The Ivy modules are built with the project-build-plugin, whic
 - **One shared core, two deployables.** `rule-engine-core` is an Axon Ivy project, so Ivy projects require it like
   any other. It is plain Java on purpose: the runtime adds its `src` folder as a source folder and compiles it
   with Java 21, so the Docker build needs no Ivy tooling, and any use of the Ivy API in the core breaks the runtime
-  build at once.
+  build at once. The OpenAPI annotations on its records document the runtime's contract; in Ivy they are a
+  compile-only dependency and are ignored at runtime.

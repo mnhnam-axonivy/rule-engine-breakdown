@@ -196,10 +196,11 @@ One developer does F0 before the tracks start. It is small on purpose: everythin
 - **Acceptance**
   - Every record turns into the JSON that `openapi.yaml` describes and back again (unit tests in the runtime module,
     which compiles the core).
-  - `FeelNames` has unit tests:
-    - names reserved in FEEL are renamed;
+  - `FeelNames` and `BeanProperties` have unit tests:
+    - names reserved in FEEL are renamed, and found back;
     - names of built-in functions keep their name;
-    - `Risk Level` finds `riskLevel`.
+    - field paths get the shortest name that is unique;
+    - data class properties are found in declaration order.
 - **Depends on**: 0.1.
 - **Reference**: `rule-engine-core/src/com/axonivy/utils/rule/engine/api/`,
   `rule-engine-core/src/.../dmn/generator/FeelNames.java`, `rule-engine-runtime/openapi.yaml`.
@@ -583,7 +584,7 @@ by name.
 - **Acceptance**: tests of `TestMapping`:
   - data class properties are found in declaration order;
   - Ivy values become JSON and back;
-  - fields are found by name;
+  - fields are found by name, also when only case and blanks differ (`Risk Level` finds `riskLevel`);
   - fields are read without creating nested objects.
 - **Depends on**: 0.2.
 - **Reference**: `rule-engine/src/.../mapping/`, `TestMapping.java`, the root `README.md` (decision "Mapping by
