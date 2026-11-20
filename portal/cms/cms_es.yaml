@@ -767,6 +767,14 @@ ch.ivy.addon.portalkit.ui.jsf:
       TitlePage: Gestión de funciones
       UserAssignment: Asignación de usuarios
       UserSelectionLabel: Buscar usuario para añadir a este rol
+    RuleManagement:
+      Description: "Reglas de negocio del Axon Ivy Rules Engine como tablas de decisión DMN. Cada guardado crea una nueva versión en el runtime de decisiones. Una versión guardada aquí nunca se reemplaza por un despliegue."
+      Messages:
+        NotConfigured: "El runtime de decisiones no está configurado. Defina la variable RuleEngine.Url."
+        Unreachable: "El runtime de decisiones en {0} no responde. Las reglas no se pueden cargar ni guardar."
+      Refresh: "Actualizar"
+      RuntimeConnected: "Runtime de decisiones: {0}"
+      TitlePage: "Gestión de reglas"
     SecurityMemberDisplayName:
       filterByUsername: Filtrar por nombre de usuario
       filterToSee: Filtrar para ver más
