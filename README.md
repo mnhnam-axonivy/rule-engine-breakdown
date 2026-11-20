@@ -26,9 +26,9 @@ This repository is built pull request by pull request, following [BREAKDOWN.md](
 | --- | --- |
 | [rule-engine-core](rule-engine-core) | Ivy project, plain Java, shared by the connector and the runtime: the API of the runtime (`com.axonivy.utils.rule.engine.api`: requests, responses, statuses) and the DMN generator. |
 | [rule-engine-runtime](rule-engine-runtime) | Quarkus service: loads DMN models at runtime, stores their versions, evaluates decisions. Compiles the sources of `rule-engine-core` into its own build. Serves the DMN editor page `/editor/` (Apache KIE DMN editor, fetched from npm by the build). Contract: [openapi.yaml](rule-engine-runtime/openapi.yaml). |
-| [rule-engine](rule-engine) | Ivy connector: program element `BusinessRuleTask`, client of the runtime, mapping. Requires `rule-engine-core`. |
+| [rule-engine](rule-engine) | Ivy connector: program element `BusinessRuleTask`, client of the runtime, mapping, Java API `RuleEngine`. Requires `rule-engine-core`. Variables `RuleEngine.*` in `config/variables.yaml`. |
 | [rule-engine-demo](rule-engine-demo) | The demo. |
-| [rule-engine-test](rule-engine-test) | Tests of the connector. |
+| [rule-engine-test](rule-engine-test) | Tests of the connector, with `MockRuntime`: a stand-in for the runtime that tests program. |
 
 ## Run it
 
@@ -70,6 +70,10 @@ The client of the connector follows the design of LangChain4j:
   service provider interface `HttpClientBuilderFactory` (`HttpClientBuilderLoader`).
 - `client.http.ivy`: the default transport. It uses the REST client `ruleEngine` of Axon Ivy (Jersey), the same
   way Smart Workflow plugs the Ivy REST client into LangChain4j. Calls appear in the tracing of the engine.
+- `client`: `RuleEngineClient` with a builder (`baseUrl`, `apiKey`, timeouts, `logRequests`, custom headers),
+  and exceptions for unreachable, timeout and error answers.
+- The typed requests and responses are the records of `rule-engine-core` (`com.axonivy.utils.rule.engine.api`):
+  the runtime serves exactly these classes, so client and server cannot drift apart.
 
 ## Spike result: runtime loading (MARP-4893)
 
