@@ -50,6 +50,10 @@ curl -X POST -H "Content-Type: application/json" \
 #  "discountReason":"Gold, order of 10,000 or more"},"results":{...},"version":1}
 ```
 
+Import `rule-engine-core`, `rule-engine`, `rule-engine-demo` into the Designer and start `InvoicePricingDemo/start.ivp`:
+an invoice with five lines and its discount, decided by the rules. Change the customer tier or a quantity and click
+**Apply rules**. The variable `RuleEngine.Url` points to `http://localhost:8090` by default.
+
 Every input of the decisions it needs must be in `input`, `null` if it has no value. Set `RULE_ENGINE_API_KEY` to
 protect the API; the versions live in the volume `rule-engine-data`.
 
