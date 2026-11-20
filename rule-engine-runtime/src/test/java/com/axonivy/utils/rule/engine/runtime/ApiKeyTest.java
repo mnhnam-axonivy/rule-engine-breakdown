@@ -40,7 +40,9 @@ class ApiKeyTest {
   }
 
   @Test
-  void startPageStaysOpen() {
-    given().get("/").then().statusCode(200);
+  void editorPageStaysOpen() {
+    // the page itself holds no data: it asks for the key when the API refuses it
+    given().get("/editor/").then().statusCode(200);
+    given().get("/editor/editor.js").then().statusCode(200);
   }
 }
