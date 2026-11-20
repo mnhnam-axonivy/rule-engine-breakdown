@@ -1,0 +1,100 @@
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:f="jakarta.faces.core"
+  xmlns:h="jakarta.faces.html" xmlns:ui="jakarta.faces.facelets" xmlns:p="primefaces">
+<h:body>
+  <ui:composition template="/layouts/demo-10.xhtml">
+    <ui:define name="title">Invoice discount · Rule Engine Demo</ui:define>
+    <ui:define name="content">
+      <h:form id="form">
+
+        <header class="ip-header">
+          <div>
+            <h1 class="ip-title">Invoice discount</h1>
+            <p class="ip-lead">Change the customer tier or a quantity and click <strong>Apply rules</strong>. The dialog
+              calls the callable <code>InvoicePricing</code>: it sums the lines, its Business Rule Task asks the decision
+              runtime for the discount of <code>dmn/invoice-discount.dmn</code>, and it applies the discount.</p>
+          </div>
+          <div class="ip-version">
+            <span class="ip-muted">Decided by</span>
+            <strong>invoice-discount</strong>
+          </div>
+        </header>
+
+        <p:messages id="messages" closable="true" />
+        <h:panelGroup id="error" layout="block" styleClass="ip-error" rendered="#{not empty data.errorMessage}">
+          <strong>The rules could not decide</strong> <code>#{data.errorCode}</code>
+          <div>#{data.errorMessage}</div>
+        </h:panelGroup>
+
+        <section class="card ip-card">
+          <div class="ip-card-head">
+            <h2>Invoice</h2>
+            <span class="ip-muted">The rules read the customer tier and the order amount.</span>
+          </div>
+          <div class="formgrid grid">
+            <div class="field col-12 md:col-4">
+              <p:outputLabel for="customer" value="Customer" />
+              <p:inputText id="customer" value="#{data.invoice.customer}" styleClass="w-full" />
+            </div>
+            <div class="field col-12 md:col-4">
+              <p:outputLabel for="number" value="Invoice number" />
+              <p:inputText id="number" value="#{data.invoice.number}" styleClass="w-full" />
+            </div>
+            <div class="field col-12 md:col-4">
+              <p:outputLabel for="customerTier" value="Customer tier" />
+              <p:selectOneMenu id="customerTier" value="#{data.invoice.customerTier}" styleClass="w-full">
+                <f:selectItem itemValue="Standard" itemLabel="Standard" />
+                <f:selectItem itemValue="Silver" itemLabel="Silver" />
+                <f:selectItem itemValue="Gold" itemLabel="Gold" />
+                <f:selectItem itemValue="Platinum" itemLabel="Platinum" />
+              </p:selectOneMenu>
+            </div>
+          </div>
+
+          <p:dataTable id="lines" value="#{data.invoice.lines}" var="line" rowIndexVar="row" styleClass="ip-lines">
+            <p:column headerText="#" styleClass="ip-col-no">#{row + 1}</p:column>
+            <p:column headerText="Product">
+              <p:inputText id="product" value="#{line.product}" styleClass="w-full" />
+            </p:column>
+            <p:column headerText="Qty" styleClass="ip-col-qty">
+              <p:inputNumber id="quantity" value="#{line.quantity}" decimalPlaces="0" minValue="0" maxValue="100000"
+                required="true" requiredMessage="Line #{row + 1}: enter a quantity" inputStyleClass="w-full ip-num" />
+            </p:column>
+            <p:column headerText="Unit price" styleClass="ip-col-price">
+              <p:inputNumber id="unitPrice" value="#{line.unitPrice}" decimalPlaces="2" minValue="0"
+                required="true" requiredMessage="Line #{row + 1}: enter a unit price" inputStyleClass="w-full ip-num" />
+            </p:column>
+            <p:column headerText="Amount" styleClass="ip-col-result">
+              <h:outputText styleClass="ip-num" value="#{line.amount}"><f:convertNumber minFractionDigits="2" maxFractionDigits="2" /></h:outputText>
+            </p:column>
+          </p:dataTable>
+
+          <div class="ip-actions">
+            <p:commandButton id="apply" value="Apply rules" icon="pi pi-play" actionListener="#{logic.apply}" update="@form" />
+            <p:commandButton id="reset" value="Reset the sample" icon="pi pi-refresh" actionListener="#{logic.reset}"
+              process="@this" update="@form" styleClass="ui-button-secondary ui-button-outlined" />
+          </div>
+        </section>
+
+        <div class="grid">
+          <h:panelGroup layout="block" styleClass="col-12 lg:col-6" rendered="#{empty data.errorMessage}">
+            <section class="card ip-card ip-fill">
+              <div class="ip-card-head">
+                <h2>Result</h2>
+              </div>
+              <div class="ip-row"><span>Order amount</span>
+                <h:outputText id="orderAmount" styleClass="ip-num" value="#{data.invoice.orderAmount}"><f:convertNumber minFractionDigits="2" maxFractionDigits="2" /></h:outputText></div>
+              <div class="ip-row"><span>Discount
+                  <h:outputText id="discountPercent" value="#{data.invoice.discountPercent}"><f:convertNumber maxFractionDigits="2" /></h:outputText> %
+                  <span id="discountReason" class="ip-reason">#{data.invoice.discountReason}</span></span>
+                <span class="ip-num">−<h:outputText id="discountAmount" value="#{data.invoice.discountAmount}"><f:convertNumber minFractionDigits="2" maxFractionDigits="2" /></h:outputText></span></div>
+              <div class="ip-row ip-total"><span>Total CHF</span>
+                <h:outputText id="total" styleClass="ip-num" value="#{data.invoice.total}"><f:convertNumber minFractionDigits="2" maxFractionDigits="2" /></h:outputText></div>
+            </section>
+          </h:panelGroup>
+        </div>
+
+      </h:form>
+    </ui:define>
+  </ui:composition>
+</h:body>
+</html>
