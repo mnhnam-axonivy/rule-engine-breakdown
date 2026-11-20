@@ -83,6 +83,12 @@
             action="#{ruleManagementBean.edit(model)}" process="@this"
             update=":#{cc.clientId}:rule-management :#{cc.clientId}:rule-management-messages"
             oncomplete="if (args &amp;&amp; args.opened) { RuleManagement.open(); }" />
+          <p:commandButton id="show-versions" icon="ti ti-history" title="#{ivy.cms.co(cmsPath.concat('ShowVersions'))}"
+            ariaLabel="#{ivy.cms.co(cmsPath.concat('ShowVersions'))}" disabled="#{!model.onRuntime or !ruleManagementBean.reachable}"
+            styleClass="rounded-button portal-icon-btn portal-icon-btn--sm portal-icon-btn--plain"
+            action="#{ruleManagementBean.showVersions(model)}" process="@this"
+            update=":#{cc.clientId}:rule-versions-dialog :#{cc.clientId}:rule-management-messages"
+            oncomplete="PF('ruleVersionsDialog').show()" />
         </p:column>
       </p:dataTable>
     </h:form>
@@ -134,5 +140,66 @@
       <div class="rule-editor-container" />
     </h:panelGroup>
   </h:panelGroup>
+
+  <!-- THE VERSIONS OF A RULE -->
+  <p:dialog id="rule-versions-dialog" widgetVar="ruleVersionsDialog" modal="true" appendTo="@(body)"
+    header="#{ivy.cms.co(cmsPath.concat('VersionsOf'), [ruleManagementBean.versionsOf.name])}"
+    width="1000" responsive="true" fitViewport="true" closeOnEscape="true" resizable="false"
+    styleClass="rule-versions-dialog dialog-responsive">
+    <h:form id="rule-versions-form">
+      <p:messages id="rule-versions-messages" globalOnly="true" closable="true" />
+      <p:dataTable id="rule-versions-table" cellNavigation="false" value="#{ruleManagementBean.versions}" var="version"
+        rowKey="#{version.version}" styleClass="rule-versions-table" scrollable="true" scrollHeight="420" reflow="true"
+        emptyMessage="#{ivy.cms.co('/ch.ivy.addon.portalkit.ui.jsf/common/noRecordsFound')}">
+        <p:column headerText="#{ivy.cms.co(cmsPath.concat('Version'))}" styleClass="rule-version-column">
+          <span class="font-medium">#{version.version}</span>
+        </p:column>
+        <p:column headerText="#{ivy.cms.co(cmsPath.concat('StatusHeader'))}">
+          <h:outputText value="#{ruleManagementBean.status(version.status)}"
+            styleClass="rule-badge rule-badge-#{version.status.toLowerCase()}" />
+        </p:column>
+        <p:column headerText="#{ivy.cms.co(cmsPath.concat('SourceHeader'))}">
+          <h:outputText value="#{ruleManagementBean.source(version.source)}" />
+        </p:column>
+        <p:column headerText="#{ivy.cms.co(cmsPath.concat('Author'))}">
+          <h:outputText value="#{version.author}" />
+        </p:column>
+        <p:column headerText="#{ivy.cms.co(cmsPath.concat('Created'))}">
+          <h:outputText value="#{ruleManagementBean.time(version.createdAt)}" />
+        </p:column>
+        <p:column headerText="#{ivy.cms.co(cmsPath.concat('Activated'))}">
+          <h:outputText value="#{ruleManagementBean.time(version.activatedAt)}" />
+          <h:panelGroup styleClass="rule-muted block" rendered="#{not empty version.activatedBy}">
+            <h:outputText value="#{version.activatedBy}" />
+          </h:panelGroup>
+        </p:column>
+        <p:column headerText="#{ivy.cms.co(cmsPath.concat('ChangeDescription'))}" styleClass="rule-description-column">
+          <h:outputText value="#{version.description}" />
+        </p:column>
+        <p:column headerText="#{ivy.cms.co('/ch.ivy.addon.portalkit.ui.jsf/common/action')}" styleClass="rule-actions-column text-center">
+          <p:commandButton id="open-version" icon="ti ti-pencil" title="#{ivy.cms.co(cmsPath.concat('OpenVersion'))}"
+            ariaLabel="#{ivy.cms.co(cmsPath.concat('OpenVersion'))}"
+            styleClass="rounded-button portal-icon-btn portal-icon-btn--sm portal-icon-btn--plain"
+            action="#{ruleManagementBean.editVersion(version)}" process="@this"
+            update=":#{cc.clientId}:rule-management :#{cc.clientId}:rule-management-messages"
+            oncomplete="PF('ruleVersionsDialog').hide(); if (args &amp;&amp; args.opened) { RuleManagement.open(); }" />
+          <p:commandButton id="activate-version" icon="ti ti-player-play" title="#{ivy.cms.co(cmsPath.concat('Activate'))}"
+            ariaLabel="#{ivy.cms.co(cmsPath.concat('Activate'))}" rendered="#{version.status ne 'ACTIVE'}"
+            styleClass="rounded-button portal-icon-btn portal-icon-btn--sm portal-icon-btn--plain"
+            action="#{ruleManagementBean.activate(version)}" process="@this"
+            update="@form :#{cc.clientId}:rule-management" />
+        </p:column>
+      </p:dataTable>
+      <div class="flex flex-wrap justify-content-between align-items-center gap-3 mt-3">
+        <p:commandButton id="rollback-rule" icon="ti ti-arrow-back-up" styleClass="ui-button-outlined"
+          value="#{ivy.cms.co(cmsPath.concat('RollBack'))}" title="#{ivy.cms.co(cmsPath.concat('RollBackHint'))}"
+          disabled="#{ruleManagementBean.versionsOf.activeVersion == null}"
+          actionListener="#{ruleManagementBean.rollback}" process="@this"
+          update="@form :#{cc.clientId}:rule-management" />
+        <p:commandButton id="close-versions" type="button" styleClass="ui-button-flat"
+          value="#{ivy.cms.co('/ch.ivy.addon.portalkit.ui.jsf/common/close')}" onclick="PF('ruleVersionsDialog').hide()" />
+      </div>
+    </h:form>
+  </p:dialog>
 </cc:implementation>
 </html>

@@ -58,6 +58,11 @@ public final class RuleEngineBridge {
     return call(MODELS, null);
   }
 
+  /** The versions of a model, newest first, see {@link RuleVersion} */
+  public static RuleEngineAnswer versions(String model) {
+    return call(VERSIONS, params("model", model));
+  }
+
   /** model, version and dmn of a version; version null opens the active one */
   public static RuleEngineAnswer content(String model, Integer version) {
     return call(CONTENT, params("model", model, "version", version));
@@ -72,6 +77,15 @@ public final class RuleEngineBridge {
   public static RuleEngineAnswer save(String model, String dmn, String author, String description, boolean activate) {
     return call(SAVE, params("model", model, "dmn", dmn, "author", author, "description", description,
         "activate", activate));
+  }
+
+  public static RuleEngineAnswer activate(String model, int version, String author) {
+    return call(ACTIVATE, params("model", model, "version", version, "author", author));
+  }
+
+  /** Activates the version that was active before the current one */
+  public static RuleEngineAnswer rollback(String model, String author) {
+    return call(ROLLBACK, params("model", model, "author", author));
   }
 
   private static RuleEngineAnswer call(String signature, Map<String, Object> params) {
