@@ -1,0 +1,5 @@
+# LF in every working copy, whatever core.autocrlf says: the scripts of the container image need it
+* text=auto eol=lf
+*.png binary
+*.woff2 binary
+*.tgz binary
