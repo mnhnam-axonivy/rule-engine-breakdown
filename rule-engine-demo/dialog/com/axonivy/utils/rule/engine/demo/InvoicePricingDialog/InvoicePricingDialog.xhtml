@@ -15,7 +15,8 @@
           </div>
           <div class="ip-version">
             <span class="ip-muted">Decided by</span>
-            <strong>invoice-discount</strong>
+            <strong>invoice-discount<h:outputText value=" · version #{data.ruleVersion}"
+                rendered="#{data.ruleVersion gt 0}" /></strong>
           </div>
         </header>
 
@@ -76,7 +77,7 @@
         </section>
 
         <div class="grid">
-          <h:panelGroup layout="block" styleClass="col-12 lg:col-6" rendered="#{empty data.errorMessage}">
+          <h:panelGroup layout="block" styleClass="col-12 lg:col-4" rendered="#{empty data.errorMessage}">
             <section class="card ip-card ip-fill">
               <div class="ip-card-head">
                 <h2>Result</h2>
@@ -89,6 +90,48 @@
                 <span class="ip-num">−<h:outputText id="discountAmount" value="#{data.invoice.discountAmount}"><f:convertNumber minFractionDigits="2" maxFractionDigits="2" /></h:outputText></span></div>
               <div class="ip-row ip-total"><span>Total CHF</span>
                 <h:outputText id="total" styleClass="ip-num" value="#{data.invoice.total}"><f:convertNumber minFractionDigits="2" maxFractionDigits="2" /></h:outputText></div>
+              <h:panelGroup id="delta" layout="block" styleClass="ip-delta"
+                rendered="#{not empty data.previousTotal and (data.previousTotal gt data.invoice.total or data.previousTotal lt data.invoice.total)}">
+                Before this Apply:
+                <h:outputText value="#{data.previousTotal}"><f:convertNumber minFractionDigits="2" maxFractionDigits="2" /></h:outputText>,
+                change <h:outputText value="#{data.invoice.total - data.previousTotal}"><f:convertNumber pattern="+#,##0.00;−#,##0.00" /></h:outputText>
+              </h:panelGroup>
+            </section>
+          </h:panelGroup>
+
+          <h:panelGroup layout="block" styleClass="col-12 #{empty data.errorMessage ? 'lg:col-8' : ''}" rendered="#{not empty data.rules}">
+            <section class="card ip-card ip-fill">
+              <div class="ip-card-head">
+                <h2>The rules</h2>
+                <span class="ip-tag">discount · hit policy #{data.hitPolicy}</span>
+              </div>
+              <p class="ip-muted">
+                <h:outputText value="Version #{data.ruleVersion} on the decision runtime." rendered="#{data.ruleVersion gt 0}" />
+                <h:outputText value="The file dmn/invoice-discount.dmn of the project." rendered="#{not (data.ruleVersion gt 0)}" />
+                The rules are read from top to bottom: the first one that matches decides.</p>
+              <div class="ip-scroll">
+                <table id="rules" class="ip-dmn">
+                  <thead>
+                    <tr>
+                      <th class="ip-dmn-no" title="hit policy #{data.hitPolicy}">#{data.hitPolicy.substring(0, 1)}</th>
+                      <ui:repeat value="#{data.ruleInputs}" var="input"><th class="ip-dmn-in">#{input}</th></ui:repeat>
+                      <ui:repeat value="#{data.ruleOutputs}" var="output" varStatus="status"><th class="ip-dmn-out #{status.first ? 'ip-dmn-split' : ''}">#{output}</th></ui:repeat>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <ui:repeat value="#{data.rules}" var="rule">
+                      <tr class="#{rule.matched ? 'ip-dmn-matched' : ''}">
+                        <td class="ip-dmn-no">#{rule.number}</td>
+                        <ui:repeat value="#{rule.inputs}" var="cell"><td><code>#{cell}</code></td></ui:repeat>
+                        <ui:repeat value="#{rule.outputs}" var="cell" varStatus="status"><td class="#{status.first ? 'ip-dmn-split' : ''}"><code>#{cell}</code></td></ui:repeat>
+                      </tr>
+                    </ui:repeat>
+                  </tbody>
+                </table>
+              </div>
+              <p class="ip-muted ip-try">Try: Gold or Platinum as customer tier · 5 laptops, for an order of 10,000 or more.
+                A rule owner changes these rules in the Portal, under Admin Settings › Rule Management: the next Apply rules
+                uses the new version, without a deployment.</p>
             </section>
           </h:panelGroup>
         </div>

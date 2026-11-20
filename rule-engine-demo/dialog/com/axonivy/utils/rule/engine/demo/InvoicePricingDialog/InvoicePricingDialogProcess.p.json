@@ -64,7 +64,8 @@
           "code" : [
             "import com.axonivy.utils.rule.engine.demo.InvoiceSamples;",
             "",
-            "in.invoice = InvoiceSamples.standard();"
+            "in.invoice = InvoiceSamples.standard();",
+            "in.lastTotal = null;"
           ]
         }
       },
@@ -102,13 +103,36 @@
         "size" : { "width" : 144, "height" : 60 }
       },
       "connect" : [
-        { "id" : "f21", "to" : "f24" }
+        { "id" : "f21", "to" : "f22" }
+      ]
+    }, {
+      "id" : "f22",
+      "type" : "Script",
+      "name" : [
+        "The table that",
+        "decided"
+      ],
+      "config" : {
+        "output" : {
+          "code" : [
+            "import com.axonivy.utils.rule.engine.demo.InvoicePricingPage;",
+            "",
+            "InvoicePricingPage.priced(in);"
+          ]
+        }
+      },
+      "visual" : {
+        "at" : { "x" : 544, "y" : 160 },
+        "size" : { "width" : 144, "height" : 60 }
+      },
+      "connect" : [
+        { "id" : "f23", "to" : "f24" }
       ]
     }, {
       "id" : "f24",
       "type" : "HtmlDialogEnd",
       "visual" : {
-        "at" : { "x" : 544, "y" : 160 }
+        "at" : { "x" : 704, "y" : 160 }
       }
     }, {
       "id" : "f1",
