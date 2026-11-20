@@ -981,6 +981,131 @@
           "y": 960
         }
       }
+    },
+    {
+      "id": "s8",
+      "type": "CallSubStart",
+      "name": "create(TestData)",
+      "config": {
+        "signature": "create",
+        "input": {
+          "params": [
+            {
+              "name": "data",
+              "type": "com.axonivy.utils.rule.engine.test.TestData",
+              "desc": ""
+            }
+          ],
+          "map": {
+            "out": "param.data"
+          }
+        },
+        "result": {
+          "params": [
+            {
+              "name": "data",
+              "type": "com.axonivy.utils.rule.engine.test.TestData",
+              "desc": ""
+            }
+          ],
+          "map": {
+            "result.data": "in"
+          }
+        }
+      },
+      "visual": {
+        "at": {
+          "x": 96,
+          "y": 1088
+        }
+      },
+      "connect": [
+        {
+          "id": "c8a",
+          "to": "b8"
+        }
+      ]
+    },
+    {
+      "id": "b8",
+      "type": "ProgramInterface",
+      "name": [
+        "Business Rule Task",
+        "create"
+      ],
+      "config": {
+        "javaClass": "com.axonivy.utils.rule.engine.BusinessRuleTask",
+        "userConfig": {
+          "decision": "#create",
+          "newModel": "test-generated",
+          "inputs": "in.amount, in.customer.segment, in.customer.vip, in.customer.address",
+          "outputs": "in.discount"
+        }
+      },
+      "visual": {
+        "at": {
+          "x": 280,
+          "y": 1088
+        },
+        "size": {
+          "width": 144,
+          "height": 60
+        }
+      },
+      "boundaries": [
+        {
+          "id": "x8",
+          "type": "ErrorBoundaryEvent",
+          "name": "rule:engine",
+          "config": {
+            "errorCode": "rule:engine",
+            "output": {
+              "code": [
+                "in.errorCode = error.getErrorCode();",
+                "in.errorMessage = error.getMessage();"
+              ]
+            }
+          },
+          "visual": {
+            "at": {
+              "x": 320,
+              "y": 1120
+            }
+          },
+          "connect": [
+            {
+              "id": "c8x",
+              "to": "e8",
+              "via": [
+                {
+                  "x": 320,
+                  "y": 1144
+                },
+                {
+                  "x": 464,
+                  "y": 1144
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "connect": [
+        {
+          "id": "c8b",
+          "to": "e8"
+        }
+      ]
+    },
+    {
+      "id": "e8",
+      "type": "CallSubEnd",
+      "visual": {
+        "at": {
+          "x": 464,
+          "y": 1088
+        }
+      }
     }
   ]
 }

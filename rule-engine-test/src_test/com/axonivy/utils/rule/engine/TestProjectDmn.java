@@ -1,6 +1,7 @@
 package com.axonivy.utils.rule.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.IOException;
 import java.lang.reflect.Proxy;
@@ -11,12 +12,16 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.axonivy.utils.rule.engine.dmn.DmnModelInfo;
 import com.axonivy.utils.rule.engine.dmn.ProjectDmnFiles;
 import com.axonivy.utils.rule.engine.program.internal.Conf;
+import com.axonivy.utils.rule.engine.program.internal.DmnCreator;
+import com.axonivy.utils.rule.engine.program.internal.FieldSelection;
+import com.axonivy.utils.rule.engine.test.TestData;
 
 import ch.ivyteam.ivy.application.project.Project;
 import ch.ivyteam.ivy.environment.IvyTest;
@@ -25,7 +30,7 @@ import ch.ivyteam.ivy.process.program.ui.ProgramWidget;
 import ch.ivyteam.ivy.process.program.ui.select.SelectItem;
 
 /**
- * The .dmn files of a project, and what the inscription mask offers.
+ * The .dmn files of a project: what the inscription mask offers and what "New DMN" checks.
  */
 @IvyTest
 class TestProjectDmn {
@@ -66,9 +71,24 @@ class TestProjectDmn {
     }
   }
 
+  private Path generated;
 
   @BeforeEach
-  public void refresh() {
+  public void locate() {
+    ProjectDmnFiles.refresh();
+    generated = Project.current().directory().resolve("dmn").resolve("test-generated.dmn");
+  }
+
+  @AfterEach
+  public void cleanup() throws IOException {
+    Files.deleteIfExists(generated);
+    if (Files.isDirectory(generated.getParent())) {
+      try (var remaining = Files.list(generated.getParent())) {
+        if (remaining.findAny().isEmpty()) {
+          Files.delete(generated.getParent());
+        }
+      }
+    }
     ProjectDmnFiles.refresh();
   }
 
@@ -191,5 +211,34 @@ class TestProjectDmn {
     assertThat(RuleEngineConfig.editorUrl("http://localhost:8090")).isEqualTo("http://localhost:8090/editor/");
     assertThat(RuleEngineConfig.editorUrl(" https://rules.example.com/runtime/ ")).isEqualTo("https://rules.example.com/runtime/editor/");
     assertThat(RuleEngineConfig.editorUrl("")).isEqualTo("<RuleEngine.Url>/editor/");
+  }
+
+  /** A new DMN needs a name, and one that no other file has. */
+  @Test
+  void newDmn_needsANameOfItsOwn() {
+    assertThatThrownBy(() -> DmnCreator.create(Project.current(), TestData.class, " ",
+        FieldSelection.parse("in.amount"), FieldSelection.parse("in.discount")))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("'New DMN name' is empty. Name the new DMN, e.g. member-discount.");
+    assertThatThrownBy(() -> DmnCreator.create(Project.current(), TestData.class, "discount",
+        FieldSelection.parse("in.amount"), FieldSelection.parse("in.discount")))
+        .as("dmn/discount.dmn of this project was not generated from these fields")
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("A DMN named 'discount' exists already (discount.dmn)");
+  }
+
+  /** The element reads the inputs and writes the results of a generated DMN by name, like those of any other. */
+  @Test
+  void newDmn_thatTheMappingByNameCouldNotRead_isRefused() {
+    assertThatThrownBy(() -> DmnCreator.create(Project.current(), TestData.class, "test-generated",
+        FieldSelection.parse("in.amount"), FieldSelection.parse("in.amount")))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("'amount' is selected as input and as output");
+    assertThatThrownBy(() -> DmnCreator.create(Project.current(), TestData.class, "test-generated",
+        FieldSelection.parse("amount = in.amount"), FieldSelection.parse("in.discount")))
+        .as("an input is named like its field: there is nothing to rename")
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("List fields with their path");
+    assertThat(generated).as("no file for a refused selection").doesNotExist();
   }
 }

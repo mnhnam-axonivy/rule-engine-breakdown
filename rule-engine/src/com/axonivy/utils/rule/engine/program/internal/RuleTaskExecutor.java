@@ -61,7 +61,7 @@ public class RuleTaskExecutor {
   public void execute() {
     try {
       Class<?> dataClass = dataClass();
-      Selection selection = selection();
+      Selection selection = selection(dataClass);
       try {
         evaluate(selection, dataClass);
       } catch (RuleEngineException ex) {
@@ -148,7 +148,7 @@ public class RuleTaskExecutor {
     return input;
   }
 
-  private Selection selection() {
+  private Selection selection(Class<?> dataClass) {
     List<String> selected = context.config().getList(Conf.DECISION);
     String value = selected.isEmpty() ? "" : StringUtils.trimToEmpty(selected.get(0));
     if (value.isEmpty()) {
@@ -157,6 +157,21 @@ public class RuleTaskExecutor {
     }
     if (selected.size() > 1) {
       Ivy.log().warn("Only one decision is evaluated. Using " + value + " and ignoring the others of " + selected);
+    }
+    if (Conf.CREATE_NEW.equals(value)) {
+      if (dataClass == null) {
+        throw RuleErrors.mapping("Cannot create a DMN: the process has no data.");
+      }
+      try {
+        var created = DmnCreator.create(Project.current(), dataClass, context.config().get(Conf.NEW_MODEL),
+            FieldSelection.parse(context.config().get(Conf.INPUTS)),
+            FieldSelection.parse(context.config().get(Conf.OUTPUTS)));
+        return new Selection(created.model(), created.decision());
+      } catch (IllegalArgumentException | IllegalStateException ex) {
+        Ivy.log().error("Rule engine: the Business Rule Task '" + StringUtils.normalizeSpace(context.element().name())
+            + "' cannot create its new DMN. " + ex.getMessage());
+        throw RuleErrors.mapping(ex.getMessage(), ex);
+      }
     }
     int separator = value.indexOf(Conf.SEPARATOR);
     String model = separator < 0 ? value : value.substring(0, separator);
