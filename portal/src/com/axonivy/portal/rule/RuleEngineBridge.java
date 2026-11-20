@@ -53,6 +53,11 @@ public final class RuleEngineBridge {
     return call(INFO, null);
   }
 
+  /** The models of the decision runtime and the .dmn files of the projects, see {@link RuleModel} */
+  public static RuleEngineAnswer models() {
+    return call(MODELS, null);
+  }
+
   private static RuleEngineAnswer call(String signature, Map<String, Object> params) {
     try {
       Map<String, Object> response = IvyAdapterService.startSubProcessInSecurityContext(signature, params);

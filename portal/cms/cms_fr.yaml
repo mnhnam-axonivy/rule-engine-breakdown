@@ -769,13 +769,22 @@ ch.ivy.addon.portalkit.ui.jsf:
       UserAssignment: Affectation des utilisateurs
       UserSelectionLabel: Rechercher un utilisateur à ajouter à ce rôle
     RuleManagement:
+      ActiveVersion: "Version active"
+      Decisions: "Décisions"
       Description: "Règles métier de l'Axon Ivy Rules Engine, sous forme de tables de décision DMN. Chaque enregistrement crée une nouvelle version dans le runtime de décision. Une version enregistrée ici n'est jamais remplacée par un déploiement."
+      FileOfProject: "{0} du projet {1}"
       Messages:
         NotConfigured: "Le runtime de décision n'est pas configuré. Définissez la variable RuleEngine.Url."
         Unreachable: "Le runtime de décision à {0} ne répond pas. Les règles ne peuvent être ni chargées ni enregistrées."
+      NoActiveVersion: "Aucune active"
+      NoRules: "Aucune règle trouvée. Une règle est un fichier .dmn d'un projet ou un modèle du runtime de décision."
+      NotOnRuntime: "Pas encore dans le runtime"
       Refresh: "Actualiser"
+      Rule: "Règle"
       RuntimeConnected: "Runtime de décision : {0}"
       TitlePage: "Gestion des règles"
+      VersionLabel: "Version {0}"
+      Versions: "Versions"
     SecurityMemberDisplayName:
       filterByUsername: Filtrer par nom d'utilisateur
       filterToSee: Filtrer pour en savoir plus
