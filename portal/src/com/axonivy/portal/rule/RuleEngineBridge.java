@@ -48,7 +48,7 @@ public final class RuleEngineBridge {
     }
   }
 
-  /** runtimeUrl, reachable, editorScript and modelPrefix */
+  /** runtimeUrl, reachable, editorScript (link of the DMN editor script) and modelPrefix */
   public static RuleEngineAnswer info() {
     return call(INFO, null);
   }
@@ -56,6 +56,22 @@ public final class RuleEngineBridge {
   /** The models of the decision runtime and the .dmn files of the projects, see {@link RuleModel} */
   public static RuleEngineAnswer models() {
     return call(MODELS, null);
+  }
+
+  /** model, version and dmn of a version; version null opens the active one */
+  public static RuleEngineAnswer content(String model, Integer version) {
+    return call(CONTENT, params("model", model, "version", version));
+  }
+
+  /** valid and messages: the findings of the DMN engine */
+  public static RuleEngineAnswer validate(String dmn) {
+    return call(VALIDATE, params("dmn", dmn));
+  }
+
+  /** Stores a new version with the source Portal: live at once, or as draft */
+  public static RuleEngineAnswer save(String model, String dmn, String author, String description, boolean activate) {
+    return call(SAVE, params("model", model, "dmn", dmn, "author", author, "description", description,
+        "activate", activate));
   }
 
   private static RuleEngineAnswer call(String signature, Map<String, Object> params) {
