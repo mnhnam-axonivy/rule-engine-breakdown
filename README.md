@@ -29,6 +29,7 @@ This repository is built pull request by pull request, following [BREAKDOWN.md](
 | [rule-engine](rule-engine) | Ivy connector: program element `BusinessRuleTask`, client of the runtime, mapping, Java API `RuleEngine`. Requires `rule-engine-core`. Variables `RuleEngine.*` in `config/variables.yaml`. |
 | [rule-engine-demo](rule-engine-demo) | The demo. |
 | [rule-engine-test](rule-engine-test) | Tests of the connector, with `MockRuntime`: a stand-in for the runtime that tests program. |
+| [portal](portal), [portal-components](portal-components) | Axon Ivy Portal 14.0.1.2, imported unchanged from [axonivy-market/portal](https://github.com/axonivy-market/portal), tag `14.0.1.2` (commit `474b8205`), as the base of the tab **Rule Management**. Not part of the Maven build of the rule engine, see [Rule Management in the Portal](#rule-management-in-the-portal). |
 
 ## Run it
 
@@ -121,6 +122,10 @@ are the contract between the two: the Portal side is built against them.
 | --- | --- | --- |
 | Rule engine | `rule-engine/process/Portal/RuleManagement.p.json`, `com.axonivy.utils.rule.engine.portal.RuleManagement` | The bridge. One start per call, every start answers `result` and `error`, made of JDK types only (String, Integer, Boolean, List, Map), so the Portal needs no class of the rule engine. |
 | Rule engine | `com.axonivy.utils.rule.engine.portal.DmnEditorScript` | REST resource `{app}/api/rule-engine/dmn-editor/dmn-editor.js`: the KIE DMN editor, fetched once from the runtime (`/editor/lib/dmn-editor.js`) and kept in memory. The browser never talks to the runtime. |
+
+The Portal of this repository is the release 14.0.1.2, imported unchanged in one commit: every change made for the
+rule engine is a diff against that commit. Its files keep the line endings of the release (`.gitattributes`).
+Build it with `mvn install -f portal-components` and `mvn verify -f portal`.
 
 The contract, tested by `TestRuleManagement` in `rule-engine-test`:
 
