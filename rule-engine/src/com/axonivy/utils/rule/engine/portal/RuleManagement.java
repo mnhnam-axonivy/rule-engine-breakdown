@@ -47,6 +47,10 @@ import ch.ivyteam.ivy.environment.Ivy;
  */
 public final class RuleManagement {
 
+  /** Path of {@link DmnEditorScript} under the REST API of the application. */
+  public static final String REST_PATH = "rule-engine/dmn-editor";
+  public static final String EDITOR_SCRIPT = "dmn-editor.js";
+
   public static final String UNREACHABLE = "UNREACHABLE";
   public static final String TIMEOUT = "TIMEOUT";
   public static final String NOT_CONFIGURED = "NOT_CONFIGURED";
@@ -55,13 +59,15 @@ public final class RuleManagement {
   private RuleManagement() {}
 
   /**
-   * @return runtimeUrl, reachable and modelPrefix
+   * @return runtimeUrl, reachable, editorScript (the link of the DMN editor script, served by this engine)
+   *         and modelPrefix
    */
   public static RuleManagementAnswer info() {
     var config = RuleEngineConfig.fromVariables();
     var info = new LinkedHashMap<String, Object>();
     info.put("runtimeUrl", config.url());
     info.put("modelPrefix", config.modelPrefix());
+    info.put("editorScript", editorScriptLink());
     boolean reachable = false;
     try {
       reachable = !config.url().isBlank() && RuleEngine.client(config).isReady();
@@ -238,6 +244,23 @@ public final class RuleManagement {
     map.put("previousVersion", version.previousVersion());
     map.put("created", version.created());
     return map;
+  }
+
+  /**
+   * @return the link of the DMN editor script on this engine, relative to the server, or null outside of a
+   *         request
+   */
+  static String editorScriptLink() {
+    try {
+      String base = Ivy.html().appBaseLink().getRelative();
+      while (base.endsWith("/")) {
+        base = base.substring(0, base.length() - 1);
+      }
+      return base + "/api/" + REST_PATH + "/" + EDITOR_SCRIPT;
+    } catch (RuntimeException ex) {
+      Ivy.log().debug("Rule management: no link to the DMN editor script outside of a request", ex);
+      return null;
+    }
   }
 
   private static RuleEngineClient client(RuleEngineConfig config) {

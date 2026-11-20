@@ -10,15 +10,18 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.axonivy.utils.rule.engine.RuleEngineConfig.Var;
+import com.axonivy.utils.rule.engine.portal.DmnEditorScript;
 import com.axonivy.utils.rule.engine.test.mock.MockRuntime;
 
 import ch.ivyteam.ivy.bpm.exec.client.IvyProcessTest;
 import ch.ivyteam.ivy.environment.AppFixture;
+import ch.ivyteam.ivy.environment.Ivy;
 import ch.ivyteam.ivy.process.call.SubProcessCallStartEvent;
 import ch.ivyteam.ivy.process.call.SubProcessCallStartParamCaller;
 import ch.ivyteam.ivy.process.call.SubProcessSearchFilter;
 import ch.ivyteam.ivy.process.call.SubProcessSearchFilter.SearchScope;
 import ch.ivyteam.ivy.security.exec.Sudo;
+import jakarta.ws.rs.core.Response;
 
 /**
  * The bridge to the tab "Rule Management" of the Axon Ivy Portal: the callable sub process Portal/RuleManagement,
@@ -44,6 +47,7 @@ class TestRuleManagement {
   @BeforeEach
   void setup(AppFixture fixture) {
     MockRuntime.reset();
+    DmnEditorScript.forget();
     fixture.var(Var.URL, MockRuntime.url());
     fixture.var(Var.API_KEY, "test-key");
     fixture.var(Var.MODEL_PREFIX, "");
@@ -202,6 +206,39 @@ class TestRuleManagement {
 
     assertThat((Map<String, Object>) answer.get("error")).containsEntry("code", "UNREACHABLE");
     assertThat((Map<String, Object>) result(call("ruleManagementInfo()", Map.of()))).containsEntry("reachable", false);
+  }
+
+  @Test
+  void theEditorScriptComesFromTheRuntimeThroughThisEngine() {
+    MockRuntime.editorScript("window.DmnEditor = { open: function () {} };");
+
+    try (Response first = editorScript(null)) {
+      assertThat(first.getStatus()).isEqualTo(200);
+      assertThat(first.readEntity(String.class)).isEqualTo("window.DmnEditor = { open: function () {} };");
+      assertThat(first.getHeaderString("Content-Type")).startsWith("text/javascript");
+      String etag = first.getHeaderString("ETag");
+      assertThat(etag).isNotBlank();
+      try (Response again = editorScript(etag)) {
+        assertThat(again.getStatus()).as("the browser has it already").isEqualTo(304);
+      }
+    }
+    assertThat(MockRuntime.calls("editorScript")).as("fetched from the runtime once").hasSize(1);
+  }
+
+  @Test
+  void aRuntimeWithoutEditorIsExplained() {
+    try (Response response = editorScript(null)) {
+      assertThat(response.getStatus()).isEqualTo(404);
+      assertThat(response.readEntity(String.class)).contains("has no DMN editor");
+    }
+  }
+
+  private static Response editorScript(String ifNoneMatch) {
+    var request = Ivy.rest().client("dmnEditorScript").path("dmn-editor.js").request();
+    if (ifNoneMatch != null) {
+      request = request.header("If-None-Match", ifNoneMatch);
+    }
+    return request.get();
   }
 
   /** Calls a start of the bridge as the Portal does: found by its signature in the security context. */
