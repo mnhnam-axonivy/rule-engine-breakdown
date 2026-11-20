@@ -14,9 +14,11 @@ import com.axonivy.utils.rule.engine.RuleEngineConfig;
 import com.axonivy.utils.rule.engine.api.EvaluateRequest;
 import com.axonivy.utils.rule.engine.api.EvaluateResponse;
 import com.axonivy.utils.rule.engine.api.ModelInfo;
+import com.axonivy.utils.rule.engine.api.VersionSource;
 import com.axonivy.utils.rule.engine.client.RuleEngineClient;
 import com.axonivy.utils.rule.engine.client.exception.RuleEngineApiException;
 import com.axonivy.utils.rule.engine.client.exception.RuleEngineException;
+import com.axonivy.utils.rule.engine.deploy.ActiveVersionInputs;
 import com.axonivy.utils.rule.engine.deploy.ModelDeployer;
 import com.axonivy.utils.rule.engine.dmn.DmnModelInfo;
 import com.axonivy.utils.rule.engine.dmn.ProjectDmnFiles;
@@ -81,7 +83,11 @@ public class RuleTaskExecutor {
     Optional<LoadedDmn> dmn = ProjectDmnFiles.find(Project.current(), selection.model()).map(ProjectDmnFiles::load);
     boolean deploy = config.autoDeploy() && dmn.isPresent();
 
-    var input = input(inputNames(selection, dmn, client, runtimeModel), selection, dataClass);
+    List<String> needed = inputNames(selection, dmn, client, runtimeModel);
+    Optional<ActiveVersionInputs.Active> active = dmn.isPresent()
+        ? ActiveVersionInputs.of(client, runtimeModel, selection.decision())
+        : Optional.empty();
+    var input = input(withInputsOfAnsweringVersion(needed, deploy, active), selection, dataClass);
 
     if (deploy) {
       ModelDeployer.ensureRegistered(client, runtimeModel, dmn.get());
@@ -97,6 +103,18 @@ public class RuleTaskExecutor {
       ModelDeployer.forget(client, runtimeModel);
       ModelDeployer.register(client, runtimeModel, dmn.get());
       response = client.evaluate(runtimeModel, request(selection, input));
+    }
+    if (dmn.isPresent() && (active.isEmpty() || response.version() != active.get().version())) {
+      // Another version answered than the one the inputs were chosen for, e.g. a rule owner activated one a moment
+      // ago, or the runtime knew no version of the model yet. Ask again; if the version that answered needs more
+      // inputs, evaluate once more with them.
+      ActiveVersionInputs.forget(client, runtimeModel);
+      var now = ActiveVersionInputs.of(client, runtimeModel, selection.decision());
+      List<String> names = withInputsOfAnsweringVersion(needed, deploy, now);
+      if (!input.keySet().containsAll(names)) {
+        input = input(names, selection, dataClass);
+        response = client.evaluate(runtimeModel, request(selection, input));
+      }
     }
     mapResults(response, selection, dataClass);
   }
@@ -144,6 +162,23 @@ public class RuleTaskExecutor {
     String model = separator < 0 ? value : value.substring(0, separator);
     String decision = separator < 0 ? null : StringUtils.trimToNull(value.substring(separator + 1));
     return new Selection(model.trim(), decision);
+  }
+
+  /**
+   * The version that answers may not be the file of the project: a version that a rule owner activated in the Portal
+   * or through the API stays active, the file is only stored as a draft beside it. Such a version may need inputs the
+   * file does not have, e.g. a column the rule owner added. A version from a project is replaced by the file.
+   *
+   * @return the inputs of the file, and those of the active version if that version answers instead of the file
+   */
+  private static List<String> withInputsOfAnsweringVersion(List<String> fileInputs, boolean deploy,
+      Optional<ActiveVersionInputs.Active> active) {
+    if (active.isEmpty() || (deploy && active.get().source() == VersionSource.PROJECT)) {
+      return fileInputs;
+    }
+    var names = new ArrayList<>(fileInputs);
+    active.get().inputs().stream().filter(name -> !names.contains(name)).forEach(names::add);
+    return names;
   }
 
   /**
