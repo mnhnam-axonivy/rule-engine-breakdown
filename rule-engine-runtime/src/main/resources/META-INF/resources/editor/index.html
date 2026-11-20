@@ -24,7 +24,7 @@
   </header>
 
   <div class="layout">
-    <aside class="side" aria-label="Models">
+    <aside class="side" aria-label="Models and files">
       <section>
         <h2>On the runtime</h2>
         <p id="runtime-hint" class="hint">Loading the models…</p>
@@ -45,6 +45,16 @@
         </table>
       </section>
 
+      <section>
+        <h2>Files</h2>
+        <div class="file-buttons">
+          <button id="open-file" type="button">Open .dmn file…</button>
+          <button id="new-model" type="button">New model…</button>
+        </div>
+        <p class="hint">Open the <code>.dmn</code> file of an Ivy project to edit it here. <strong>Save file</strong> writes it
+          back, and the Business Rule Task sends the changed file to the runtime with its next evaluation.</p>
+        <input id="file-input" type="file" accept=".dmn,.xml" hidden>
+      </section>
     </aside>
 
     <main class="main">
@@ -63,6 +73,8 @@
           <button id="redo" type="button" title="Redo">Redo</button>
           <button id="check" type="button" title="Let the decision runtime check the model">Check</button>
           <span class="sep" aria-hidden="true"></span>
+          <button id="save-file" type="button" title="Write the model to a .dmn file">Save file</button>
+          <span class="sep" aria-hidden="true"></span>
           <input id="description" class="description" placeholder="What changed (optional)" spellcheck="true">
           <button id="save-draft" type="button" title="Store a new version on the runtime, without making it live">Save as draft</button>
           <button id="save-activate" type="button" class="primary" title="Store a new version on the runtime and make it live">Save and activate</button>
@@ -75,6 +87,7 @@
           <h1>Edit decision tables</h1>
           <p>Open a model of the runtime on the left to change its rules. Every save is a new version: the runtime
             keeps all of them, and a version can be activated again at any time.</p>
+          <p>To change the <code>.dmn</code> file of an Ivy project instead, choose <strong>Open .dmn file…</strong>.</p>
         </div>
       </div>
     </main>
@@ -94,5 +107,16 @@
     </form>
   </dialog>
 
+  <dialog id="name-dialog">
+    <form method="dialog">
+      <h2>New model</h2>
+      <p>The name of the model on the runtime. Name it like the <code>.dmn</code> file, e.g. <code>discount</code>.</p>
+      <input id="name-input" pattern="[A-Za-z0-9][A-Za-z0-9._\-]{0,199}" required spellcheck="false">
+      <div class="dialog-actions">
+        <button value="cancel" formnovalidate>Cancel</button>
+        <button value="ok" class="primary">Create</button>
+      </div>
+    </form>
+  </dialog>
 </body>
 </html>
