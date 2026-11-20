@@ -62,3 +62,8 @@ Runtime loading works and is used. The fallback (Kogito code generation with a p
   with Java 21, so the Docker build needs no Ivy tooling, and any use of the Ivy API in the core breaks the runtime
   build at once. The OpenAPI annotations on its records document the runtime's contract; in Ivy they are a
   compile-only dependency and are ignored at runtime.
+
+- **Versions are stored in the runtime container**, not in the system database of the Ivy Engine as MARP-4895
+  describes. The container holds the engine and an embedded H2 database on the volume `/data`.
+  Consequence: the runtime is not stateless, several runtime instances need a shared database
+  (the store is JPA, switching the database is a configuration and driver change).
