@@ -139,3 +139,9 @@ The position of the matching rule does not matter: the engine evaluates all rows
 - **Mapping by name only**: inputs and results are always found by name. A value that has to be prepared, or a
   field with another name, is set in the process data before the element, for example in a Script. Input fields
   and Output fields only describe a new DMN.
+
+- **Inputs of the version that answers**: the Business Rule Task takes the inputs a decision needs from the `.dmn` file
+  of the project. A version activated in the Portal or through the API answers instead of the file, and may need
+  more, e.g. a column a rule owner added. So the task also sends the inputs of the active version when it did not
+  come from a project, found in the process data by name. What the runtime has active is asked at most every five
+  seconds; if another version answers than expected, the task asks again and evaluates once more.

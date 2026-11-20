@@ -285,6 +285,57 @@ class TestBusinessRuleTask {
     assertThat(input.get("type").asString()).isEqualTo("Gold");
   }
 
+  /** A rule owner added a column in the Portal: the file does not know it, the version that answers needs it. */
+  @Test
+  void versionFromThePortal_getsTheInputsItNeeds(BpmClient client) {
+    MockRuntime.model("discount", "discount", "purchaseAmount", "type", "country", "segment");
+    MockRuntime.activeSource("discount", "PORTAL");
+    MockRuntime.onEvaluate(call -> MockRuntime.results(2, "{\"discount\":20}"));
+
+    TestData result = run(client, "demoDiscount", sampleData());
+
+    assertThat(result.getErrorMessage()).isNull();
+    assertThat(result.getDiscount().intValue()).isEqualTo(20);
+    JsonNode input = MockRuntime.calls("evaluate").get(0).body().get("input");
+    assertThat(input.propertyNames()).as("the inputs of the file and the one the Portal version added")
+        .containsExactlyInAnyOrder("purchaseAmount", "type", "country", "segment");
+    assertThat(input.get("segment").asString()).as("found in the process data by its name").isEqualTo("GOLD");
+  }
+
+  /** The runtime was asked a moment ago, then a rule owner activated a version: the answer says so, it is asked again. */
+  @Test
+  void versionActivatedInThePortalAMomentAgo_getsItsInputs(BpmClient client) {
+    MockRuntime.model("discount", "discount", "purchaseAmount", "type", "country", "segment");
+    MockRuntime.onEvaluate(call -> MockRuntime.results(1, "{\"discount\":15}"));
+    run(client, "demoDiscount", sampleData()); // registers the file
+    run(client, "demoDiscount", sampleData()); // knows the active version: one from the project
+    MockRuntime.activeVersion("discount", 2);
+    MockRuntime.activeSource("discount", "PORTAL");
+    MockRuntime.onEvaluate(call -> MockRuntime.results(2, "{\"discount\":20}"));
+
+    TestData result = run(client, "demoDiscount", sampleData());
+
+    assertThat(result.getDiscount().intValue()).isEqualTo(20);
+    var evaluations = MockRuntime.calls("evaluate");
+    assertThat(evaluations).as("one for each of the first two runs, two for the third").hasSize(4);
+    assertThat(evaluations.get(2).body().get("input").propertyNames()).doesNotContain("segment");
+    assertThat(evaluations.get(3).body().get("input").propertyNames()).as("evaluated again with what version 2 needs")
+        .contains("segment");
+  }
+
+  /** A version from the project is replaced by the file: the file says what is needed. */
+  @Test
+  void versionFromTheProject_isReplaced_theFileDecidesTheInputs(BpmClient client) {
+    MockRuntime.model("discount", "discount", "purchaseAmount", "type", "country", "segment");
+    MockRuntime.activeSource("discount", "PROJECT");
+    MockRuntime.onEvaluate(call -> MockRuntime.results(2, "{\"discount\":15}"));
+
+    run(client, "demoDiscount", sampleData());
+
+    JsonNode input = MockRuntime.calls("evaluate").get(0).body().get("input");
+    assertThat(input.propertyNames()).containsExactlyInAnyOrder("purchaseAmount", "type", "country");
+  }
+
   @Test
   void modelPrefix_namesTheModelOnTheRuntime(BpmClient client, AppFixture fixture) {
     fixture.var(Var.MODEL_PREFIX, "sales-");
