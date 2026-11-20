@@ -859,6 +859,128 @@
           "y": 832
         }
       }
+    },
+    {
+      "id": "s7",
+      "type": "CallSubStart",
+      "name": "demoDiscount(TestData)",
+      "config": {
+        "signature": "demoDiscount",
+        "input": {
+          "params": [
+            {
+              "name": "data",
+              "type": "com.axonivy.utils.rule.engine.test.TestData",
+              "desc": ""
+            }
+          ],
+          "map": {
+            "out": "param.data"
+          }
+        },
+        "result": {
+          "params": [
+            {
+              "name": "data",
+              "type": "com.axonivy.utils.rule.engine.test.TestData",
+              "desc": ""
+            }
+          ],
+          "map": {
+            "result.data": "in"
+          }
+        }
+      },
+      "visual": {
+        "at": {
+          "x": 96,
+          "y": 960
+        }
+      },
+      "connect": [
+        {
+          "id": "c7a",
+          "to": "b7"
+        }
+      ]
+    },
+    {
+      "id": "b7",
+      "type": "ProgramInterface",
+      "name": [
+        "Business Rule Task",
+        "demoDiscount"
+      ],
+      "config": {
+        "javaClass": "com.axonivy.utils.rule.engine.BusinessRuleTask",
+        "userConfig": {
+          "decision": "discount#discount"
+        }
+      },
+      "visual": {
+        "at": {
+          "x": 280,
+          "y": 960
+        },
+        "size": {
+          "width": 144,
+          "height": 60
+        }
+      },
+      "boundaries": [
+        {
+          "id": "x7",
+          "type": "ErrorBoundaryEvent",
+          "name": "rule:engine",
+          "config": {
+            "errorCode": "rule:engine",
+            "output": {
+              "code": [
+                "in.errorCode = error.getErrorCode();",
+                "in.errorMessage = error.getMessage();"
+              ]
+            }
+          },
+          "visual": {
+            "at": {
+              "x": 320,
+              "y": 992
+            }
+          },
+          "connect": [
+            {
+              "id": "c7x",
+              "to": "e7",
+              "via": [
+                {
+                  "x": 320,
+                  "y": 1016
+                },
+                {
+                  "x": 464,
+                  "y": 1016
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "connect": [
+        {
+          "id": "c7b",
+          "to": "e7"
+        }
+      ]
+    },
+    {
+      "id": "e7",
+      "type": "CallSubEnd",
+      "visual": {
+        "at": {
+          "x": 464,
+          "y": 960
+        }
+      }
     }
   ]
 }
