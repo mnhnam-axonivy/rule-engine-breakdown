@@ -110,6 +110,33 @@ Measured on a 12 core Windows 11 machine with Java 25, runtime and client on the
 Throughput through the REST API with 8 parallel clients: 2,243 evaluations per second.
 The position of the matching rule does not matter: the engine evaluates all rows of a table.
 
+## Rule Management in the Portal
+
+The Portal has no dependency on the rule engine. It finds it the way it finds Smart Workflow: by the signature of
+a callable sub process in the security context (`SubProcessCallStartEvent.find` with `SearchScope.SECURITY_CONTEXT`).
+If it is there, the Admin Settings show the tab **Rule Management**; otherwise nothing changes. The signatures below
+are the contract between the two: the Portal side is built against them.
+
+| Side | Where | What |
+| --- | --- | --- |
+| Rule engine | `rule-engine/process/Portal/RuleManagement.p.json`, `com.axonivy.utils.rule.engine.portal.RuleManagement` | The bridge. One start per call, every start answers `result` and `error`, made of JDK types only (String, Integer, Boolean, List, Map), so the Portal needs no class of the rule engine. |
+
+The contract, tested by `TestRuleManagement` in `rule-engine-test`:
+
+| Signature | Result |
+| --- | --- |
+| `ruleManagementModels()` | The models of the runtime and the `.dmn` files of the projects the runtime does not know yet: name, onRuntime, activeVersion, latestVersion, versionCount, decisions, project, file. The Portal detects the rule engine by this start. |
+| `ruleManagementInfo()` | runtimeUrl, reachable, editorScript (link of the editor script on this engine), modelPrefix |
+| `ruleManagementVersions(String)` | The versions of a model, newest first: version, status, source, author, description, createdAt, activatedAt, activatedBy, effectiveDate, previousVersion |
+| `ruleManagementContent(String,Integer)` | model, version, dmn; version null opens the active one, a project file is read from its project |
+| `ruleManagementValidate(String)` | valid, messages (the findings of the DMN engine) |
+| `ruleManagementSave(String,String,String,String,Boolean)` | model, dmn, author, description, activate: a new version with the source *portal*, as draft or live |
+| `ruleManagementActivate(String,Integer,String)` | model, version, author |
+| `ruleManagementRollback(String,String)` | model, author |
+
+`error` is null on success, else a map with `code` (UNREACHABLE, TIMEOUT, NOT_CONFIGURED, an error code of the
+runtime such as INVALID_MODEL, or FAILED), `message` and `details`.
+
 ## Decisions taken in this implementation
 
 - **One shared core, two deployables.** `rule-engine-core` is an Axon Ivy project, so Ivy projects require it like
