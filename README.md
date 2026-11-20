@@ -39,6 +39,22 @@ Java 25 and Maven. The Ivy modules are built with the project-build-plugin, whic
 | `mvn verify` | Everything without Docker. |
 | `mvn quarkus:dev -f rule-engine-runtime` | Runtime in dev mode on port 8090. |
 
+## Spike result: runtime loading (MARP-4893)
+
+Runtime loading works and is used. The fallback (Kogito code generation with a pipeline template) is not needed.
+
+- DMN files are compiled in memory with `DMNRuntimeBuilder` of `kie-dmn-core`, the same engine Kogito uses.
+  No code generation, no KieContainer, no restart. This is the mechanism of the Kogito JIT executor.
+- Kogito's Quarkus extension is not used: it compiles models at build time, which is the opposite of what we need.
+- A version is an immutable compiled model. Activating another version swaps one reference,
+  evaluations that are running keep the version they started with.
+- Versions: Apache KIE 10.2.0 on Quarkus 3.38. It reads DMN 1.1 to 1.6. The generator writes DMN 1.5,
+  which the KIE editor upgrades to 1.6 on save.
+- Risk that stays: `org.kie.dmn.core.internal.utils` is internal API of KIE. It is isolated in
+  `DmnCompiler` and `DmnEvaluator` and covered by tests, so an upgrade of KIE shows a break at once.
+- Inputs are type-checked (`rule.engine.type-check=true`): a value outside of the allowed values of an enum
+  fails the evaluation instead of silently matching no rule.
+
 ## Decisions taken in this implementation
 
 - **One shared core, two deployables.** `rule-engine-core` is an Axon Ivy project, so Ivy projects require it like
