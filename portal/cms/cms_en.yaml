@@ -764,6 +764,14 @@ ch.ivy.addon.portalkit.ui.jsf:
       TitlePage: Role Management
       UserAssignment: User assignment
       UserSelectionLabel: Search user to add to this role
+    RuleManagement:
+      Description: "Business rules of the Axon Ivy Rules Engine, as DMN decision tables. Every save is a new version on the decision runtime. A version saved here is never replaced by a deployment."
+      Messages:
+        NotConfigured: "The decision runtime is not configured. Set the variable RuleEngine.Url."
+        Unreachable: "The decision runtime at {0} does not answer. Rules can be neither loaded nor saved."
+      Refresh: "Refresh"
+      RuntimeConnected: "Decision runtime: {0}"
+      TitlePage: "Rule Management"
     SecurityMemberDisplayName:
       filterByUsername: Filter by user name
       filterToSee: Filter to see more
