@@ -8,6 +8,11 @@ includes software developed by third parties:
 
   Apache KIE (incubating) - Drools DMN engine (kie-dmn-core, kie-dmn-validation, kie-dmn-feel)
     https://kie.apache.org                      Apache License 2.0
+  Apache KIE Tools (incubating) - DMN Editor Standalone (@kie-tools/dmn-editor-standalone),
+  served by the page /editor/
+    https://github.com/apache/incubator-kie-tools   Apache License 2.0
+    The notices of the libraries it bundles are served next to it:
+    /editor/lib/dmn-editor.js.LICENSE.txt and /editor/lib/dmn-editor-envelope.js.LICENSE.txt
   Quarkus
     https://quarkus.io                          Apache License 2.0
   Hibernate ORM
