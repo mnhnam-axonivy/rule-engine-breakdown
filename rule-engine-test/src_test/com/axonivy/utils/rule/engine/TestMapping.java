@@ -14,6 +14,7 @@ import com.axonivy.utils.rule.engine.dmn.generator.DmnType;
 import com.axonivy.utils.rule.engine.dmn.generator.JavaTypeMapper;
 import com.axonivy.utils.rule.engine.mapping.FieldLocator;
 import com.axonivy.utils.rule.engine.mapping.ValueConverter;
+import com.axonivy.utils.rule.engine.program.internal.FieldSelection;
 import com.axonivy.utils.rule.engine.test.Customer;
 import com.axonivy.utils.rule.engine.test.Recommendation;
 import com.axonivy.utils.rule.engine.test.Segment;
@@ -154,5 +155,21 @@ class TestMapping {
     data.setAmount(5);
     assertThat(FieldLocator.read(data, "in.amount")).contains(java.util.Optional.of(5));
     assertThat(FieldLocator.read(data, "in.unknown")).as("not a field").isEmpty();
+  }
+
+  @Test
+  void selectedFields_getTheirDmnNames() {
+    var selection = FieldSelection.parse("""
+        in.member.purchaseAmount, in.member.type
+        in.order.type; in.amount
+        in.member.purchaseAmount
+        """);
+    assertThat(selection.expressionsByName()).containsExactly(
+        Map.entry("purchaseAmount", "in.member.purchaseAmount"),
+        Map.entry("memberType", "in.member.type"),
+        Map.entry("orderType", "in.order.type"),
+        Map.entry("amount", "in.amount"));
+    assertThat(FieldSelection.parse(null).isEmpty()).isTrue();
+    assertThat(FieldSelection.parse("  ").isEmpty()).isTrue();
   }
 }
