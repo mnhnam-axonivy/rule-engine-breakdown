@@ -1,6 +1,10 @@
 package com.axonivy.portal.bean;
 
 import java.io.Serializable;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -13,6 +17,7 @@ import jakarta.inject.Named;
 import org.apache.commons.lang3.StringUtils;
 import org.primefaces.PrimeFaces;
 
+import com.axonivy.portal.components.service.DateTimeGlobalSettingService;
 import com.axonivy.portal.components.util.FacesMessageUtils;
 import com.axonivy.portal.rule.RuleEngineAnswer;
 import com.axonivy.portal.rule.RuleEngineBridge;
@@ -24,8 +29,8 @@ import ch.ivy.addon.portalkit.util.PermissionUtils;
 import ch.ivyteam.ivy.environment.Ivy;
 
 /**
- * The tab "Rule Management" of the Admin Settings: the rules (DMN models) of the Axon Ivy Rules Engine, and the
- * DMN editor of Apache KIE to change them. Everything goes through {@link RuleEngineBridge}; the
+ * The tab "Rule Management" of the Admin Settings: the rules (DMN models) of the Axon Ivy Rules Engine, their
+ * versions, and the DMN editor of Apache KIE to change them. Everything goes through {@link RuleEngineBridge}; the
  * editor itself runs in the browser (rule-management.js).
  */
 @Named
@@ -42,6 +47,9 @@ public class RuleManagementBean implements Serializable {
   private String loadProblem;
   private List<RuleModel> models = new ArrayList<>();
   private List<RuleModel> filteredModels;
+
+  private RuleModel versionsOf;
+  private List<RuleVersion> versions = new ArrayList<>();
 
   private boolean editing;
   private String editModel;
@@ -85,6 +93,11 @@ public class RuleManagementBean implements Serializable {
   /** Opens the active version of a rule, or the .dmn file of its project if the runtime does not know it yet. */
   public void edit(RuleModel model) {
     open(model.name(), null);
+  }
+
+  /** Opens a version from the list of versions. */
+  public void editVersion(RuleVersion version) {
+    open(versionsOf.name(), version.version());
   }
 
   private void open(String model, Integer version) {
@@ -156,6 +169,57 @@ public class RuleManagementBean implements Serializable {
     }
   }
 
+  // ── versions ──────────────────────────────────────────────────────────────────
+
+  public void showVersions(RuleModel model) {
+    versionsOf = model;
+    loadVersions();
+  }
+
+  private void loadVersions() {
+    if (!allowed() || versionsOf == null) {
+      return;
+    }
+    RuleEngineAnswer answer = RuleEngineBridge.versions(versionsOf.name());
+    versions = answer.isOk() ? answer.list().stream().map(RuleVersion::of).toList() : List.of();
+    if (!answer.isOk()) {
+      error(answer.error());
+    }
+  }
+
+  public void activate(RuleVersion version) {
+    if (!allowed()) {
+      return;
+    }
+    RuleEngineAnswer answer = RuleEngineBridge.activate(versionsOf.name(), version.version(), author());
+    if (answer.isOk()) {
+      info(cms("Messages/Activated", versionsOf.name(), version.version()));
+    } else {
+      error(answer.error());
+    }
+    reloadAfterChange();
+  }
+
+  public void rollback() {
+    if (!allowed()) {
+      return;
+    }
+    RuleEngineAnswer answer = RuleEngineBridge.rollback(versionsOf.name(), author());
+    if (answer.isOk()) {
+      info(cms("Messages/RolledBack", versionsOf.name(), RuleVersion.of(answer.map()).version()));
+    } else {
+      error(answer.error());
+    }
+    reloadAfterChange();
+  }
+
+  private void reloadAfterChange() {
+    String name = versionsOf.name();
+    load();
+    versionsOf = models.stream().filter(model -> model.name().equals(name)).findFirst().orElse(versionsOf);
+    loadVersions();
+  }
+
   // ── what the page shows ───────────────────────────────────────────────────────
 
   /** EL sees only the components of a record, so derived values come from here. */
@@ -165,6 +229,24 @@ public class RuleManagementBean implements Serializable {
 
   public String status(String status) {
     return StringUtils.isBlank(status) ? "" : cms("Status/" + status);
+  }
+
+  public String source(String source) {
+    return StringUtils.isBlank(source) ? "" : cms("Source/" + source);
+  }
+
+  /** @return an ISO-8601 time of the runtime in the date format of the Portal */
+  public String time(String iso) {
+    if (StringUtils.isBlank(iso)) {
+      return "";
+    }
+    try {
+      var formatter = DateTimeFormatter.ofPattern(DateTimeGlobalSettingService.getInstance().getDateTimePattern(),
+          Ivy.session().getFormattingLocale());
+      return OffsetDateTime.parse(iso).atZoneSameInstant(ZoneId.systemDefault()).format(formatter);
+    } catch (DateTimeParseException | IllegalArgumentException ex) {
+      return iso;
+    }
   }
 
   /** @return what is open in the editor, e.g. "Version 3 · Active" or "dmn/invoice-discount.dmn of rule-engine-demo" */
@@ -266,6 +348,14 @@ public class RuleManagementBean implements Serializable {
 
   public void setFilteredModels(List<RuleModel> filteredModels) {
     this.filteredModels = filteredModels;
+  }
+
+  public RuleModel getVersionsOf() {
+    return versionsOf;
+  }
+
+  public List<RuleVersion> getVersions() {
+    return versions;
   }
 
   public boolean isEditing() {
