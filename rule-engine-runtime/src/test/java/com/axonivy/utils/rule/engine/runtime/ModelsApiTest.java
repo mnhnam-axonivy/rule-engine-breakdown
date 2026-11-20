@@ -323,7 +323,12 @@ class ModelsApiTest {
   }
 
   @Test
-  void contractIsAvailable() {
+  void healthAndContractAreAvailable() {
+    given().get("/q/health/live").then().statusCode(200).body("status", equalTo("UP"));
+    given().get("/q/health/ready").then()
+        .statusCode(200)
+        .body("status", equalTo("UP"))
+        .body("checks.name", hasItem("Active DMN models"));
     given().get("/q/openapi").then().statusCode(200).body(containsString("/api/models/{model}/evaluate"));
   }
 
