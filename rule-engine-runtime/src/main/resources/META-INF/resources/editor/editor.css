@@ -87,6 +87,7 @@ button.primary { border-color: var(--primary); background: var(--primary); color
 button.primary:hover:not(:disabled) { background: var(--primary-dark); }
 button.link { padding: 0 2px; border: 0; background: none; color: var(--primary); }
 button.link:hover:not(:disabled) { text-decoration: underline; }
+.file-buttons { display: flex; flex-wrap: wrap; gap: 6px; }
 
 /* ── editor area ── */
 .main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }

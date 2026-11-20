@@ -7,14 +7,15 @@ folder. The repository builds, tests and ships without it.
 
 `editor-smoke` starts a throwaway container of `axonivy/rule-engine-runtime:dev` with an API key and uses the
 page `/editor/` of the decision runtime like a person would: the API key prompt, open a model, change a rule in the
-KIE editor, save and activate, activate the old version, roll back, a model the runtime rejects. Every request that leaves the runtime is blocked and
+KIE editor, save and activate, activate the old version, roll back, a model the runtime rejects, a new model, a
+`.dmn` file written back. Every request that leaves the runtime is blocked and
 counts as a failure. The container is removed afterwards.
 
 ```
 docker compose build                 # in the repository root, after a change of the runtime
 cd internal/editor-smoke
 npm install                          # once
-npm run smoke                        # screenshots in .preview/
+npm run smoke                        # 33 checks, screenshots in .preview/
 npm run smoke -- --url=http://localhost:8090/ --key=<key>   # against a runtime that runs already; adds versions to it
 ```
 

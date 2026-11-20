@@ -8,7 +8,7 @@
  *                            the same against a runtime that runs already. It adds versions to it!
  *
  * The page is used like a person would: API key prompt, open a model, change a rule, save and activate,
- * activate the old version, roll back, a model the runtime rejects.
+ * activate the old version, roll back, a model the runtime rejects, a new model, a .dmn file written back.
  * The first change is made in the KIE editor itself, like a person does it: select the decision, "Edit", type
  * into a cell. Later changes use the editor's API (setContent). Every request outside the runtime is blocked
  * and counted as a failure.
@@ -16,12 +16,13 @@
  */
 import puppeteer from 'puppeteer-core';
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const shots = resolve(here, '.preview');
+const downloads = join(shots, 'downloads');
 // a small model of one table: the fixture of the connector tests, not the demo
 const discountFile = resolve(here, '../../rule-engine-test/dmn/discount.dmn');
 const IMAGE = process.env.RULE_ENGINE_IMAGE || 'axonivy/rule-engine-runtime:dev';
@@ -43,7 +44,7 @@ if (!browserPath) {
 }
 
 rmSync(shots, { recursive: true, force: true });
-mkdirSync(shots, { recursive: true });
+mkdirSync(downloads, { recursive: true });
 const failures = [];
 let checks = 0;
 const check = (ok, what) => {
@@ -102,7 +103,7 @@ let browser;
 const problems = [];
 const external = [];
 
-async function openPage(hash = '') {
+async function openPage(hash = '', { fakeFiles = false } = {}) {
   const page = await browser.newPage();
   await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1 });
   page.on('pageerror', e => problems.push('pageerror: ' + e.message));
@@ -117,6 +118,27 @@ async function openPage(hash = '') {
     if (url.startsWith(origin) || /^(data|blob|about):/.test(url)) request.continue();
     else { external.push(url); request.abort(); }
   });
+  const cdp = await page.createCDPSession();
+  await cdp.send('Browser.setDownloadBehavior', { behavior: 'allow', downloadPath: downloads });
+  if (fakeFiles) {
+    // a .dmn file on disk, as the File System Access API of Chrome and Edge hands it to the page
+    await page.evaluateOnNewDocument(xml => {
+      window.__written = null;
+      const handle = {
+        name: 'discount.dmn',
+        getFile: async () => new File([xml], 'discount.dmn', { type: 'application/xml' }),
+        requestPermission: async () => 'granted',
+        createWritable: async () => {
+          let text = '';
+          return { write: async t => { text += t; }, close: async () => { window.__written = text; } };
+        }
+      };
+      window.showOpenFilePicker = async () => [handle];
+    }, original);
+  } else {
+    // a browser without the File System Access API (e.g. Firefox): file input and download
+    await page.evaluateOnNewDocument(() => { delete window.showOpenFilePicker; delete window.showSaveFilePicker; });
+  }
   await page.goto(base + 'editor/' + hash, { waitUntil: 'load' });
   return page;
 }
@@ -252,6 +274,58 @@ try {
   text = await act(page, '#save-activate', 'error');
   check(text.includes('does not accept') && await versions() === '1:RETIRED:PROJECT,2:ACTIVE:PORTAL', 'an invalid rule is not saved, the findings are shown');
   await shot(page, '05-rejected');
+
+  console.log('\nA new model, saved as draft');
+  await page.click('#new-model');
+  await page.waitForSelector('#name-dialog[open]');
+  await page.type('#name-input', 'member-bonus');
+  await page.click('#name-dialog button.primary');
+  await page.waitForFunction(() => document.querySelector('#doc-kind').textContent === 'New model', { timeout: 15000 });
+  await page.waitForFunction(() => window.ruleEditor.ready, { timeout: 60000, polling: 200 });
+  check(await page.$eval('#save-draft', b => !b.disabled), 'the buttons work once the editor has started');
+  await sleep(1500);
+  await shot(page, '06-new-model');
+  await setModel(page, original.replace(/name="discount" namespace/, 'name="member-bonus" namespace'), 'member-bonus.dmn');
+  await waitForContent(page, 'member-bonus', 20000);
+  text = await act(page, '#save-draft', 'ok');
+  const bonus = await api('models/member-bonus/versions');
+  check(text.includes('draft') && bonus.length === 1 && bonus[0].status === 'DRAFT', 'a new model is stored as draft version 1');
+  check(await page.$$eval('#models .model', nodes => nodes.map(n => n.dataset.model).join()) === 'discount,member-bonus', 'the list shows the new model');
+  await page.close();
+
+  console.log('\nA .dmn file of a project, without file access: open with a file input, save as download');
+  page = await openPage();
+  await enterKey(page);
+  const [chooser] = await Promise.all([page.waitForFileChooser(), page.click('#open-file')]);
+  await chooser.accept([discountFile]);
+  check(Boolean(await waitForContent(page, '_rule_1_output_discount')), 'the file opens in the editor');
+  check(await page.$eval('#doc-kind', n => n.textContent) === 'File' && await page.$eval('#doc-model', n => n.value) === 'discount', 'the model is named like the file');
+  await act(page, '#save-file', 'info');
+  let file = null;
+  for (let i = 0; i < 20 && !file; i++) {
+    await sleep(250);
+    file = readdirSync(downloads).find(name => name === 'discount.dmn');
+  }
+  check(Boolean(file) && readFileSync(join(downloads, file), 'utf8').includes('_rule_1_output_discount'), 'Save as file… downloads discount.dmn');
+  await page.close();
+
+  console.log('\nA .dmn file of a project, with file access (Chrome, Edge): written back');
+  page = await openPage('', { fakeFiles: true });
+  await enterKey(page);
+  await page.click('#open-file');
+  check(Boolean(await waitForContent(page, '_rule_1_output_discount')), 'the file opens in the editor');
+  const fileDoc = await page.evaluate(() => {
+    const doc = window.ruleEditor.state.doc;
+    return { kind: doc.kind, handle: Boolean(doc.fileHandle), picker: String(window.showOpenFilePicker).slice(0, 40), button: document.querySelector('#save-file').textContent };
+  });
+  check(fileDoc.button === 'Save file', 'the button says it writes the file itself' + (fileDoc.button === 'Save file' ? '' : ': ' + JSON.stringify(fileDoc)));
+  await setModel(page, withDiscount(25));
+  await waitForContent(page, '25', 20000);
+  await act(page, '#save-file', 'ok');
+  const written = await page.evaluate(() => window.__written);
+  check(Boolean(written) && /<(\w+:)?text>25<\/(\w+:)?text>/.test(written), 'Save file writes the changed model back to discount.dmn');
+  check(await versions() === '1:RETIRED:PROJECT,2:ACTIVE:PORTAL', 'saving the file does not touch the runtime');
+  await shot(page, '07-file-saved');
   await page.close();
 
   check(problems.length === 0, 'no errors in the browser' + (problems.length ? ': ' + problems.slice(0, 3).join(' | ') : ''));
