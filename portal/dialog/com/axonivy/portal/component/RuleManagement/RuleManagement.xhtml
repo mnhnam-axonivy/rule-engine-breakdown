@@ -22,7 +22,7 @@
 
   <h:panelGroup id="rule-management" layout="block" styleClass="rule-management">
 
-    <!-- THE DECISION RUNTIME -->
+    <!-- THE RULES -->
     <h:form id="rule-list-form">
       <div class="rule-management-header flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
         <div class="rule-management-intro">
@@ -42,6 +42,34 @@
           actionListener="#{ruleManagementBean.refresh}"
           update="@form :#{cc.clientId}:rule-management-messages" />
       </div>
+
+      <p:dataTable id="rule-table" cellNavigation="false" widgetVar="ruleTable" styleClass="admin-table rule-table"
+        value="#{ruleManagementBean.models}" var="model" filteredValue="#{ruleManagementBean.filteredModels}"
+        reflow="true" lazy="false" rowKey="#{model.name}"
+        emptyMessage="#{empty ruleManagementBean.loadProblem ? ivy.cms.co(cmsPath.concat('NoRules')) : ruleManagementBean.loadProblem}">
+        <p:column id="rule-name-column" headerText="#{ivy.cms.co(cmsPath.concat('Rule'))}"
+          filterBy="#{model.name}" filterMatchMode="contains" sortBy="#{model.name}" styleClass="rule-name-column">
+          <div class="rule-name font-medium">#{model.name}</div>
+          <h:panelGroup styleClass="rule-file" rendered="#{not empty model.project}">
+            <i class="ti ti-file-code" aria-hidden="true" />
+            <h:outputText value="#{ivy.cms.co(cmsPath.concat('FileOfProject'), [model.file, model.project])}" />
+          </h:panelGroup>
+        </p:column>
+        <p:column headerText="#{ivy.cms.co(cmsPath.concat('Decisions'))}" styleClass="rule-decisions-column">
+          <h:outputText value="#{ruleManagementBean.decisionNames(model)}" />
+        </p:column>
+        <p:column headerText="#{ivy.cms.co(cmsPath.concat('ActiveVersion'))}" styleClass="rule-active-column">
+          <h:outputText styleClass="rule-badge rule-badge-active" rendered="#{model.onRuntime and model.activeVersion != null}"
+            value="#{ivy.cms.co(cmsPath.concat('VersionLabel'), [model.activeVersion])}" />
+          <h:outputText styleClass="rule-muted" rendered="#{model.onRuntime and model.activeVersion == null}"
+            value="#{ivy.cms.co(cmsPath.concat('NoActiveVersion'))}" />
+          <h:outputText styleClass="rule-badge rule-badge-new" rendered="#{!model.onRuntime}"
+            value="#{ivy.cms.co(cmsPath.concat('NotOnRuntime'))}" />
+        </p:column>
+        <p:column headerText="#{ivy.cms.co(cmsPath.concat('Versions'))}" styleClass="rule-count-column text-center">
+          <h:outputText value="#{model.versionCount}" />
+        </p:column>
+      </p:dataTable>
     </h:form>
   </h:panelGroup>
 </cc:implementation>
