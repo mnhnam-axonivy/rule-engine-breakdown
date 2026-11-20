@@ -145,3 +145,7 @@ The position of the matching rule does not matter: the engine evaluates all rows
   more, e.g. a column a rule owner added. So the task also sends the inputs of the active version when it did not
   come from a project, found in the process data by name. What the runtime has active is asked at most every five
   seconds; if another version answers than expected, the task asks again and evaluates once more.
+
+- **New DMN...**: without a change event, selecting the entry cannot generate the file at that moment.
+  The file is generated when an inscription mask of the project is opened the next time, or when the element
+  is executed. The selection switches to the generated decision through the config migrator of the element.
