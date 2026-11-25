@@ -23,8 +23,11 @@ Each PR lists its **scope**, its **outcome**, its **acceptance criteria**, what 
   `rule-engine-product/README.md`, is written in PR 9.1, from the features as they are by then.
 - Contracts change first, in a PR of their own, so that teams on both sides work against them without waiting for
   each other:
-  - the API records of `rule-engine-core` and `rule-engine-runtime/openapi.yaml` (PR 0.2);
+  - the API records of the runtime and of the connector, and `rule-engine/runtime/openapi.yaml` (PR 0.2). A PR that
+    changes a record changes both sides; `ContractTest` fails if it does not;
   - the callable signatures of the Portal bridge (PR 6.1, signatures listed there).
+- The packages `api` and `dmn.generator` of the connector are plain Java 21 without the Ivy API, because the tests of
+  the runtime compile them.
 - The connector is tested against `MockRuntime` (PR 3.2), never the real runtime. Tests against the container come
   only in F9.
 - Several features touch the same files: `MockRuntime.java`, `rule-engine-test/process/RuleTest.p.json` and the two
@@ -34,12 +37,12 @@ Each PR lists its **scope**, its **outcome**, its **acceptance criteria**, what 
 
 | ID | Feature | Module | Stories | PRs | Needs first |
 | --- | --- | --- | --- | --- | --- |
-| F0 | Foundation and contract | root, `rule-engine-core` | 2 | 2 | none |
-| F1 | Decision runtime | `rule-engine-runtime` | 5 | 9 | F0 |
-| F2 | DMN editor page of the runtime | `rule-engine-runtime` (`/editor/`), `internal/editor-smoke` | 2 | 4 | F0, and 1.6 and 1.7 for PR 2.2 |
+| F0 | Foundation and contract | root, `rule-engine`, `rule-engine/runtime` | 2 | 2 | none |
+| F1 | Decision runtime | `rule-engine/runtime` | 5 | 9 | F0 |
+| F2 | DMN editor page of the runtime | `rule-engine/runtime` (`/editor/`), `internal/editor-smoke` | 2 | 4 | F0, and 1.6 and 1.7 for PR 2.2 |
 | F3 | Client of the runtime | `rule-engine` (`client`) | 2 | 2 | F0 |
 | F4 | Business Rule Task | `rule-engine` | 5 | 7 | F0, and 3.2 for PR 4.4 |
-| F5 | New DMN from process data | `rule-engine-core` (`dmn.generator`), `rule-engine` | 2 | 3 | 1.1, and 4.4 for PR 5.2 |
+| F5 | New DMN from process data | `rule-engine` (`dmn.generator`, `program.internal`) | 2 | 3 | 1.1, and 4.4 for PR 5.2 |
 | F6 | Rule Management bridge | `rule-engine` (`portal`, `process/Portal`) | 2 | 3 | 3.2 and 4.1, and 2.1 for PR 6.3 |
 | F7 | Rule Management tab in the Portal | `portal`, `portal-components` | 4 | 5 | none for 7.1; the signatures of 6.1 for 7.2 |
 | F8 | Demo | `rule-engine-demo` | 2 | 3 | 4.4 |
@@ -160,50 +163,63 @@ One developer does F0 before the tracks start. It is small on purpose: everythin
 #### PR 0.1 Maven reactor and empty modules
 
 - **Scope**
-  - The root `pom.xml` with the modules `rule-engine-core`, `rule-engine-runtime`, `rule-engine`, `rule-engine-demo`
-    and `rule-engine-test`, all empty but buildable. Maven deploy is skipped. `rule-engine-product` joins in PR 9.1.
-  - `rule-engine-core` is an Ivy project with plain Java and no use of the Ivy API.
-  - `rule-engine-runtime` is a Quarkus application. It adds `../rule-engine-core/src` as a source folder
-    (build-helper) and compiles it with Java 21, so the image needs no Ivy tooling.
+  - The root `pom.xml` with the modules `rule-engine`, `rule-engine/runtime`, `rule-engine-demo` and
+    `rule-engine-test`, all empty but buildable. Maven deploy is skipped. `rule-engine-product` joins in PR 9.1.
+  - `rule-engine` is the Ivy connector. Its iar leaves out the folder `runtime` (`iarExcludes`).
+  - `rule-engine/runtime` is a Quarkus application on Java 21. It lies in the folder of the connector, but shares no
+    code with it, only JSON, so the image needs no Ivy tooling.
+  - Only the tests of the runtime compile code of the connector: build-helper adds `../src` as a test source folder,
+    and the `testIncludes` of the compiler limit it to the packages `api` and `dmn.generator`.
   - `application.properties` with port 8080, and 8090 in dev mode.
 - **Outcome**: all modules build together; the runtime starts in dev mode.
 - **Acceptance**
   - `mvn verify` passes from the root.
-  - `mvn quarkus:dev -f rule-engine-runtime` answers `http://localhost:8090/q/health`.
-  - A class in `rule-engine-core` that imports `ch.ivyteam.*` breaks the runtime build. Try it once in review.
+  - `mvn quarkus:dev -f rule-engine/runtime` answers `http://localhost:8090/q/health`.
+  - The iar of `rule-engine` contains no file of `runtime`.
+  - Try both once in review:
+    - the main code of the runtime does not compile if it uses a class of the connector;
+    - a class in `api` or `dmn.generator` that imports `ch.ivyteam.ivy.environment.Ivy` breaks the tests of the runtime.
 - **Depends on**: nothing.
-- **Reference**: `pom.xml`, `rule-engine-core/pom.xml`, `rule-engine-runtime/pom.xml`, the root `README.md`
-  (decision "One shared core, two deployables").
+- **Reference**: `pom.xml`, `rule-engine/pom.xml`, `rule-engine/runtime/pom.xml`, the root `README.md` (decision "One
+  project, two deployables").
 
 ### Story 0.B Runtime and connector speak one contract
 
 #### PR 0.2 API records and OpenAPI contract
 
 - **Scope**
-  - The records of `com.axonivy.utils.rule.engine.api`:
-    - requests: `EvaluateRequest` (with builder), `RegisterVersionRequest`, `ActivateRequest`, `ValidateRequest`;
+  - The records of the runtime, `com.axonivy.utils.rule.engine.runtime.api.model`, with OpenAPI annotations:
+    - requests: `EvaluateRequest`, `RegisterVersionRequest`, `ActivateRequest`, `ValidateRequest`;
     - answers: `EvaluateResponse` (model, version, decision, result, results), `ModelInfo` (decisions with their
       required inputs, inputs), `ModelVersion`, `ValidationResult`;
     - `Message`, and `ErrorResponse` (code, message, details);
     - the enums `VersionSource` (PROJECT, PORTAL, API) and `VersionStatus` (DRAFT, APPROVED, ACTIVE, RETIRED).
-  - OpenAPI annotations, compile-only in Ivy.
-  - `FeelNames` and `BeanProperties`: the naming rules and the reading of data class properties that the mapping
-    (4.2) and the generator (5.1) share. They are in this PR so that both can start at once.
-  - `rule-engine-runtime/openapi.yaml`: the 14 operations under `/api` and the error codes INVALID_REQUEST,
+  - The records of the connector, `com.axonivy.utils.rule.engine.api`: the same fields, with Javadoc instead of OpenAPI
+    annotations, and with builders for `EvaluateRequest` and `RegisterVersionRequest`. There is no `ValidateRequest`:
+    the client sends that one field without a record.
+  - `ContractTest` in the runtime: the records of both sides have the same fields with the same types, and the enums
+    the same constants. It does not compare JSON annotations such as `@JsonInclude`.
+  - `FeelNames` and `BeanProperties`, in the package `dmn.generator` of the connector: the naming rules and the
+    reading of data class properties that the mapping (4.2) and the generator (5.1) share. They are in this PR so that
+    both can start at once.
+  - `rule-engine/runtime/openapi.yaml`: the 14 operations under `/api` and the error codes INVALID_REQUEST,
     INVALID_MODEL, UNAUTHORIZED, MODEL_NOT_FOUND, VERSION_NOT_FOUND, DECISION_NOT_FOUND, NO_ACTIVE_VERSION,
     INVALID_STATE, EVALUATION_FAILED and INTERNAL_ERROR.
-- **Outcome**: the runtime and the connector are written against the same classes, so they cannot drift apart.
+- **Outcome**: the runtime and the connector are written against one contract, each with records of its own. A
+  difference between them fails the build.
 - **Acceptance**
-  - Every record turns into the JSON that `openapi.yaml` describes and back again (unit tests in the runtime module,
-    which compiles the core).
+  - The records of both sides turn into the JSON that `openapi.yaml` describes and back again (unit tests in the
+    runtime module, whose tests compile the records of the connector too).
+  - Renaming a field, or adding an enum constant, on one side only makes `ContractTest` fail. Try it once in review.
   - `FeelNames` and `BeanProperties` have unit tests:
     - names reserved in FEEL are renamed, and found back;
     - names of built-in functions keep their name;
     - field paths get the shortest name that is unique;
     - data class properties are found in declaration order.
 - **Depends on**: 0.1.
-- **Reference**: `rule-engine-core/src/com/axonivy/utils/rule/engine/api/`,
-  `rule-engine-core/src/.../dmn/generator/FeelNames.java`, `rule-engine-runtime/openapi.yaml`.
+- **Reference**: `rule-engine/runtime/src/main/java/.../runtime/api/model/`,
+  `rule-engine/src/com/axonivy/utils/rule/engine/api/`, `rule-engine/src/.../dmn/generator/FeelNames.java`,
+  `ContractTest.java`, `rule-engine/runtime/openapi.yaml`.
 
 ---
 
@@ -234,7 +250,7 @@ A Quarkus service that loads DMN models at runtime, keeps all their versions and
     - empty content, a file that is not DMN, and a model with errors each give readable messages;
     - an enum value outside its allowed values fails while type-check is on.
 - **Depends on**: 0.2.
-- **Reference**: `rule-engine-runtime/src/main/java/.../runtime/dmn/`.
+- **Reference**: `rule-engine/runtime/src/main/java/.../runtime/dmn/`.
 
 ### Story 1.B Versions are stored and follow a life cycle
 
@@ -382,19 +398,21 @@ A Quarkus service that loads DMN models at runtime, keeps all their versions and
 #### PR 1.8 Container image and Docker Compose
 
 - **Scope**
-  - A multi-stage `Dockerfile`, built from the root of the repository because it compiles the core.
+  - A multi-stage `Dockerfile`, built from `rule-engine/runtime` alone.
   - The image runs as non-root user 1001, keeps its data in the volume `/data`, has a health check
     (`docker/healthcheck.sh`) and `JAVA_OPTS`, and carries `LICENSE` and `NOTICE`.
-  - `docker-compose.yml`: port 8090, `RULE_ENGINE_API_KEY`, a named volume, TLS options as comments.
-  - `.dockerignore`.
+  - `docker-compose.yml` in the root: build context `rule-engine/runtime`, port 8090, `RULE_ENGINE_API_KEY`, a named
+    volume, TLS options as comments.
+  - `.dockerignore` in `rule-engine/runtime`.
 - **Outcome**: one generic image for every customer; models are loaded at runtime, never built in.
 - **Acceptance**
   - `docker compose up -d --build` becomes healthy.
   - Versions survive `docker compose down` and `up`; `down -v` deletes them.
   - The container runs as uid 1001.
+  - The image contains no class of the connector.
 - **Depends on**: 1.7.
-- **Reference**: `rule-engine-runtime/Dockerfile`, `rule-engine-runtime/docker/healthcheck.sh`,
-  `docker-compose.yml`.
+- **Reference**: `rule-engine/runtime/Dockerfile`, `rule-engine/runtime/docker/healthcheck.sh`,
+  `rule-engine/runtime/.dockerignore`, `docker-compose.yml`.
 
 #### PR 1.9 Performance baseline
 
@@ -402,7 +420,7 @@ A Quarkus service that loads DMN models at runtime, keeps all their versions and
   rules with 2 inputs and hit policy FIRST, and writes `target/performance-baseline.md`.
 - **Outcome**: a baseline to compare against after a KIE or Quarkus upgrade.
 - **Acceptance**
-  - `mvn test -Pperformance -f rule-engine-runtime` writes the report: validate, compile, evaluation mean, p50,
+  - `mvn test -Pperformance -f rule-engine/runtime` writes the report: validate, compile, evaluation mean, p50,
     p95 and p99 in the engine and through REST, and the throughput with 8 clients.
   - The default build does not run it.
   - The numbers are in the root `README.md`.
@@ -429,7 +447,7 @@ list of models and versions. It needs only a browser.
   - `EditorPageTest` checks that the KIE editor is bundled and that its script is served compressed.
   - A wrong checksum fails the build.
 - **Depends on**: 0.1.
-- **Reference**: `rule-engine-runtime/pom.xml` (`dmn.editor.*`, antrun), `EditorPageTest.java`.
+- **Reference**: `rule-engine/runtime/pom.xml` (`dmn.editor.*`, antrun), `EditorPageTest.java`.
 
 ### Story 2.B Rule owners edit rules in the browser
 
@@ -454,7 +472,7 @@ list of models and versions. It needs only a browser.
     (it becomes the active version). A model the runtime rejects shows its findings.
   - `EditorPageTest` checks the page and the link from the start page.
 - **Depends on**: 2.1, 1.6, 1.7.
-- **Reference**: `rule-engine-runtime/src/main/resources/META-INF/resources/editor/`,
+- **Reference**: `rule-engine/runtime/src/main/resources/META-INF/resources/editor/`,
   `internal/editor-smoke/editor-smoke.mjs`, `internal/README.md`.
 
 #### PR 2.3 Editor page: versions
@@ -528,8 +546,8 @@ a service provider interface, with the Ivy REST client as the default transport.
     - `runtimeModel()` adds the prefix.
   - `MockRuntime` in `rule-engine-test`: a stand-in for the runtime that tests program and that records every
     request.
-- **Outcome**: Java code in Ivy calls the runtime with the records of the core. Every later connector test uses
-  the mock runtime.
+- **Outcome**: Java code in Ivy calls the runtime with the records of the package `api`. Every later connector test
+  uses the mock runtime.
 - **Acceptance**: tests of `TestRuleEngineClient`:
   - evaluate sends the model, the decision and the input;
   - versions are managed;
@@ -714,10 +732,10 @@ write.
 #### PR 5.1 DMN generator
 
 - **Scope**
-  - In `rule-engine-core`, package `dmn.generator`, using only the JDK:
+  - In `rule-engine`, package `dmn.generator`, using only the JDK:
     - `DmnSpec`, `DmnField` and `DmnType`;
-    - `JavaTypeMapper`: maps types, also those of Ivy scripting, by their class name, so the core needs no Ivy
-      dependency;
+    - `JavaTypeMapper`: maps types, also those of Ivy scripting, by their class name, so the package needs no Ivy
+      API;
     - `BeanProperties`: fields with a public getter, in declaration order;
     - `DmnGenerator`.
   - The generated DMN 1.5 model has:
@@ -726,7 +744,8 @@ write.
     - item definitions: enums with allowed values, structures for nested data classes, collections for lists;
     - one result structure when there are several outputs;
     - a description, and a diagram layout (DMNDI).
-  - Test stubs of the Ivy scripting types in the runtime tests.
+  - Test stubs of the Ivy scripting types in the runtime tests. With them, an import of one of these types in
+    `dmn.generator` no longer breaks the tests: look for `ch.ivyteam` imports in review.
 - **Outcome**: a valid, executable model that opens cleanly in the editor.
 - **Acceptance**
   - The 17 tests of `GeneratedDmnTest`: every generated model passes the KIE validator and runs in `DmnCompiler`.
@@ -734,8 +753,8 @@ write.
   - The test of `TestMapping` that maps an Ivy data class to DMN types.
   - Checked once by hand: the file opens in the KIE editor.
 - **Depends on**: 0.2, 1.1 (the tests use the compiler).
-- **Reference**: `rule-engine-core/src/.../dmn/generator/`, `rule-engine-runtime/src/test/.../generator/GeneratedDmnTest.java`,
-  `rule-engine-runtime/src/test/java/ch/ivyteam/ivy/scripting/objects/`.
+- **Reference**: `rule-engine/src/.../dmn/generator/`, `rule-engine/runtime/src/test/.../generator/GeneratedDmnTest.java`,
+  `rule-engine/runtime/src/test/java/ch/ivyteam/ivy/scripting/objects/`.
 
 ### Story 5.B "New DMN..." in the Business Rule Task
 
