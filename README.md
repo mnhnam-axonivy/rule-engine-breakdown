@@ -39,7 +39,8 @@ Java 25 and Maven. The Ivy modules are built with the project-build-plugin, whic
 ## Decisions taken in this implementation
 
 - **One project, two deployables.** `rule-engine` is the Ivy connector; its folder `runtime` is the decision runtime,
-  a Maven module of its own (Java 21, Quarkus) that the iar leaves out. The two share no code, only JSON, so the
+  a Maven module of its own (Java 21, Quarkus) that the iar leaves out. The two share no code, only JSON: each has
+  its records for the requests and responses, and `ContractTest` fails if they do not have the same fields. So the
   image is built from `rule-engine/runtime` alone, without Ivy tooling. Only the tests of the runtime compile code of
   the connector, its packages `api` and `dmn.generator`. These two are plain Java 21 on purpose: an import such as
   `ch.ivyteam.ivy.environment.Ivy` in them breaks the tests of the runtime.
