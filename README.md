@@ -14,19 +14,16 @@ This repository is built pull request by pull request, following [BREAKDOWN.md](
  │   process with                │ ───────────► │   evaluate decision                  │
  │   Business Rule Task          │  evaluate    │ DMN engine (Apache KIE, interpreted) │
  │ rule-engine connector         │ ◄─────────── │ Database with all versions (H2,      │
- │   client, mapping             │   JSON       │   volume /data)                      │
- └───────────────┬───────────────┘              └───────────────────┬──────────────────┘
-                 │            rule-engine-core                      │
-                 └──────────  API records, DMN generator  ──────────┘
+ │   client, mapping, generator  │   JSON       │   volume /data)                      │
+ └───────────────────────────────┘              └──────────────────────────────────────┘
 ```
 
 ## Modules
 
 | Module | Content |
 | --- | --- |
-| [rule-engine-core](rule-engine-core) | Ivy project, plain Java, shared by the connector and the runtime: the API of the runtime (`com.axonivy.utils.rule.engine.api`: requests, responses, statuses) and the DMN generator. |
-| [rule-engine-runtime](rule-engine-runtime) | Quarkus service: loads DMN models at runtime, stores their versions, evaluates decisions. Compiles the sources of `rule-engine-core` into its own build. Contract: [openapi.yaml](rule-engine-runtime/openapi.yaml). |
-| [rule-engine](rule-engine) | Ivy connector: program element `BusinessRuleTask`, client of the runtime, mapping. Requires `rule-engine-core`. |
+| [rule-engine](rule-engine) | Ivy connector: program element `BusinessRuleTask`, client of the runtime (`com.axonivy.utils.rule.engine.api`: requests, responses, statuses), mapping, DMN generator. |
+| [rule-engine/runtime](rule-engine/runtime) | Quarkus service, not part of the Ivy project around it: loads DMN models at runtime, stores their versions, evaluates decisions. Contract: [openapi.yaml](rule-engine/runtime/openapi.yaml). |
 | [rule-engine-demo](rule-engine-demo) | The demo. |
 | [rule-engine-test](rule-engine-test) | Tests of the connector. |
 
@@ -54,8 +51,8 @@ Java 25 and Maven. The Ivy modules are built with the project-build-plugin, whic
 | Command | What runs |
 | --- | --- |
 | `mvn verify` | Everything without Docker. |
-| `docker compose build` | The image `axonivy/rule-engine-runtime:dev`, built from the root of the repository. |
-| `mvn quarkus:dev -f rule-engine-runtime` | Runtime in dev mode on port 8090. |
+| `docker compose build` | The image `axonivy/rule-engine-runtime:dev`, built from `rule-engine/runtime`. |
+| `mvn quarkus:dev -f rule-engine/runtime` | Runtime in dev mode on port 8090. |
 
 ## Spike result: runtime loading (MARP-4893)
 
@@ -75,11 +72,12 @@ Runtime loading works and is used. The fallback (Kogito code generation with a p
 
 ## Decisions taken in this implementation
 
-- **One shared core, two deployables.** `rule-engine-core` is an Axon Ivy project, so Ivy projects require it like
-  any other. It is plain Java on purpose: the runtime adds its `src` folder as a source folder and compiles it
-  with Java 21, so the Docker build needs no Ivy tooling, and any use of the Ivy API in the core breaks the runtime
-  build at once. The OpenAPI annotations on its records document the runtime's contract; in Ivy they are a
-  compile-only dependency and are ignored at runtime.
+- **One project, two deployables.** `rule-engine` is the Ivy connector; its folder `runtime` is the decision runtime,
+  a Maven module of its own (Java 21, Quarkus) that the iar leaves out. The two share no code, only JSON: each has
+  its records for the requests and responses, and `ContractTest` fails if they do not have the same fields. So the
+  image is built from `rule-engine/runtime` alone, without Ivy tooling. Only the tests of the runtime compile code of
+  the connector, its packages `api` and `dmn.generator`. These two are plain Java 21 on purpose: an import such as
+  `ch.ivyteam.ivy.environment.Ivy` in them breaks the tests of the runtime.
 
 - **Versions are stored in the runtime container**, not in the system database of the Ivy Engine as MARP-4895
   describes. The container holds the engine and an embedded H2 database on the volume `/data`.
