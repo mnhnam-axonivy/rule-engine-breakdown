@@ -3,18 +3,18 @@ package com.axonivy.utils.rule.engine.api;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import org.eclipse.microprofile.openapi.annotations.media.Schema;
-
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 /**
  * Evaluates one decision, or all decisions, of a model with the given inputs.
+ *
+ * @param decision name of the decision to evaluate. Not set = all decisions of the model
+ * @param input input values by the name of the DMN input
  */
-@Schema(name = "EvaluateRequest")
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record EvaluateRequest(
-    @Schema(description = "Name of the decision to evaluate. Not set = all decisions of the model.") String decision,
-    @Schema(description = "Input values by the name of the DMN input.") Map<String, Object> input) {
+    String decision,
+    Map<String, Object> input) {
 
   public static Builder builder() {
     return new Builder();

@@ -14,9 +14,10 @@
     <quarkus.platform.version>3.38.1</quarkus.platform.version>
     <compiler-plugin.version>3.14.0</compiler-plugin.version>
     <surefire-plugin.version>3.5.3</surefire-plugin.version>
-    <!-- rule-engine-core: the API records and the DMN generator, shared with the Ivy connector. It is an Axon Ivy
-         project; its plain Java sources are compiled into this build, so neither Maven nor Docker needs Ivy here. -->
-    <rule.engine.core.sources>${project.basedir}/../rule-engine-core/src</rule.engine.core.sources>
+    <!-- The Ivy connector, the project this folder lies in. Only the tests compile two of its packages: its API
+         records and its DMN generator. The runtime and its image contain neither, so the Docker build needs nothing
+         but this folder. -->
+    <connector.sources>${project.basedir}/../src</connector.sources>
   </properties>
 
   <dependencyManagement>
@@ -80,23 +81,30 @@
         <version>${compiler-plugin.version}</version>
         <configuration>
           <parameters>true</parameters>
+          <testIncludes>
+            <testInclude>com/axonivy/utils/rule/engine/runtime/**</testInclude>
+            <testInclude>ch/ivyteam/**</testInclude>
+            <!-- of the connector: plain Java, without any Axon Ivy API -->
+            <testInclude>com/axonivy/utils/rule/engine/api/**</testInclude>
+            <testInclude>com/axonivy/utils/rule/engine/dmn/generator/**</testInclude>
+          </testIncludes>
         </configuration>
       </plugin>
       <plugin>
-        <!-- compiles the sources of rule-engine-core into the runtime: plain Java, no Axon Ivy API -->
+        <!-- sources of the connector for the tests, limited by the testIncludes of the compiler -->
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>build-helper-maven-plugin</artifactId>
         <version>3.6.0</version>
         <executions>
           <execution>
-            <id>add-core-sources</id>
-            <phase>generate-sources</phase>
+            <id>add-connector-test-sources</id>
+            <phase>generate-test-sources</phase>
             <goals>
-              <goal>add-source</goal>
+              <goal>add-test-source</goal>
             </goals>
             <configuration>
               <sources>
-                <source>${rule.engine.core.sources}</source>
+                <source>${connector.sources}</source>
               </sources>
             </configuration>
           </execution>

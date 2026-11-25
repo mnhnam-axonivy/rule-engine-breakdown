@@ -1,7 +1,5 @@
 package com.axonivy.utils.rule.engine.api;
 
-import org.eclipse.microprofile.openapi.annotations.media.Schema;
-
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
@@ -14,7 +12,6 @@ import com.fasterxml.jackson.annotation.JsonInclude.Include;
  * @param type kind of the finding, e.g. ERROR_EVAL_NODE
  * @param sourceId id of the DMN element the finding belongs to
  */
-@Schema(name = "ModelMessage")
 @JsonInclude(Include.NON_NULL)
 public record Message(String severity, String message, String type, String sourceId) {
 
