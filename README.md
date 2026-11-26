@@ -23,7 +23,7 @@ This repository is built pull request by pull request, following [BREAKDOWN.md](
 | Module | Content |
 | --- | --- |
 | [rule-engine](rule-engine) | Ivy connector: program element `BusinessRuleTask`, client of the runtime (`com.axonivy.utils.rule.engine.api`: requests, responses, statuses), mapping, DMN generator. |
-| [rule-engine/runtime](rule-engine/runtime) | Quarkus service, not part of the Ivy project around it: loads DMN models at runtime, stores their versions, evaluates decisions. Contract: [openapi.yaml](rule-engine/runtime/openapi.yaml). |
+| [rule-engine/runtime](rule-engine/runtime) | Quarkus service, not part of the Ivy project around it: loads DMN models at runtime, stores their versions, evaluates decisions. Serves the DMN editor page `/editor/` (Apache KIE DMN editor, fetched from npm by the build). Contract: [openapi.yaml](rule-engine/runtime/openapi.yaml). |
 | [rule-engine-demo](rule-engine-demo) | The demo. |
 | [rule-engine-test](rule-engine-test) | Tests of the connector. |
 
@@ -43,6 +43,9 @@ curl -X POST -H "Content-Type: application/json"      -d '{"decision":"discount"
 
 Every input of the decisions it needs must be in `input`, `null` if it has no value. Set `RULE_ENGINE_API_KEY` to
 protect the API; the versions live in the volume `rule-engine-data`.
+
+Change the rules in the browser at `http://localhost:8090/editor/`: open a model, edit its decision table, save it as
+a new version, as draft or live. The browser check of that page is in [internal/editor-smoke](internal/README.md).
 
 ## Build and test
 

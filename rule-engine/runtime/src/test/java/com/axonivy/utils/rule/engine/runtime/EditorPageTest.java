@@ -9,10 +9,24 @@ import org.junit.jupiter.api.Test;
 import io.quarkus.test.junit.QuarkusTest;
 
 /**
- * The runtime serves the Apache KIE DMN editor, in the version that fits its DMN engine.
+ * The page /editor/: the runtime serves it together with the Apache KIE DMN editor, so a rule can be changed
+ * in a browser without any other tool.
  */
 @QuarkusTest
 class EditorPageTest {
+
+  @Test
+  void page() {
+    given().get("/editor/").then()
+        .statusCode(200)
+        .contentType(containsString("text/html"))
+        .body(containsString("lib/dmn-editor.js"))
+        .body(containsString("editor.js"));
+    given().get("/editor/editor.js").then()
+        .statusCode(200)
+        .body(containsString("DmnEditor.open"))
+        .body(containsString("source: 'PORTAL'"));
+  }
 
   @Test
   void kieDmnEditorIsBundled() {
@@ -34,5 +48,10 @@ class EditorPageTest {
     given().header("Accept-Encoding", "gzip").get("/editor/lib/dmn-editor.js").then()
         .statusCode(200)
         .header("Content-Encoding", "gzip");
+  }
+
+  @Test
+  void startPageLinksTheEditor() {
+    given().get("/").then().statusCode(200).body(containsString("href=\"editor/\""));
   }
 }

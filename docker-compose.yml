@@ -1,6 +1,7 @@
 # Axon Ivy Rules Engine: decision runtime next to the Axon Ivy Engine.
 #
 #   docker compose up -d --build        build and start the runtime on http://localhost:8090
+#                                       DMN editor in the browser: http://localhost:8090/editor/
 #   docker compose down                 stop it, the model versions stay in the volume
 #   docker compose down -v              stop it and delete all model versions
 #
