@@ -3,23 +3,68 @@ package com.axonivy.utils.rule.engine;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
+import java.lang.reflect.Proxy;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.axonivy.utils.rule.engine.dmn.DmnModelInfo;
 import com.axonivy.utils.rule.engine.dmn.ProjectDmnFiles;
+import com.axonivy.utils.rule.engine.program.internal.Conf;
 
 import ch.ivyteam.ivy.application.project.Project;
 import ch.ivyteam.ivy.environment.IvyTest;
+import ch.ivyteam.ivy.process.program.ui.ProgramUiBuilder;
+import ch.ivyteam.ivy.process.program.ui.ProgramWidget;
+import ch.ivyteam.ivy.process.program.ui.select.SelectItem;
 
 /**
- * The .dmn files of a project, and what they offer: decisions, inputs, results.
+ * The .dmn files of a project, and what the inscription mask offers.
  */
 @IvyTest
 class TestProjectDmn {
+
+  /** Records what the element builds as inscription mask. */
+  static class RecordingUi {
+
+    final List<String> groups = new ArrayList<>();
+    final List<String> fields = new ArrayList<>();
+    final List<String> labels = new ArrayList<>();
+    final Map<String, List<SelectItem>> selects = new LinkedHashMap<>();
+
+    ProgramUiBuilder ui() {
+      return (ProgramUiBuilder) Proxy.newProxyInstance(getClass().getClassLoader(),
+          new Class<?>[] {ProgramUiBuilder.class}, (proxy, method, args) -> {
+            String key = String.valueOf(args[0]);
+            switch (method.getName()) {
+              case "group" -> groups.add(key);
+              case "label" -> labels.add(key);
+              default -> fields.add(key);
+            }
+            return builder(method.getReturnType(), key);
+          });
+    }
+
+    @SuppressWarnings("unchecked")
+    private Object builder(Class<?> type, String key) {
+      return Proxy.newProxyInstance(getClass().getClassLoader(), new Class<?>[] {type}, (proxy, method, args) -> {
+        if (method.getName().equals("create")) {
+          return Proxy.newProxyInstance(getClass().getClassLoader(), new Class<?>[] {ProgramWidget.class},
+              (widget, call, params) -> null);
+        }
+        if (method.getName().equals("items") && args != null) {
+          selects.put(key, (List<SelectItem>) args[0]);
+        }
+        return method.getReturnType().isInstance(proxy) ? proxy : null;
+      });
+    }
+  }
 
 
   @BeforeEach
@@ -105,6 +150,40 @@ class TestProjectDmn {
         .as("a table with several output columns gives the entries of a structure")
         .isEqualTo("nextStep (string), fourEyes (boolean)");
     assertThat(DmnModelInfo.describeOutputs(info.decision("dueDate").orElseThrow())).isEqualTo("dueDate (date)");
+  }
+
+  @Test
+  void inscriptionMask_listsDmnFilesAndTheirDecisions() {
+    var ui = new RecordingUi();
+    new BusinessRuleTask().editor(ui.ui());
+
+    assertThat(ui.groups).containsExactly("⚖️ Decision", "✨ New DMN");
+    assertThat(ui.fields).containsExactly(Conf.DECISION, Conf.NEW_MODEL, Conf.INPUTS, Conf.OUTPUTS);
+    var decisions = ui.selects.get(Conf.DECISION);
+    assertThat(decisions).extracting(SelectItem::id).contains(
+        "discount#discount",
+        "invoice-approval#riskLevel", "invoice-approval#approval", "invoice-approval#dueDate",
+        "invoice-approval");
+    assertThat(decisions.get(decisions.size() - 1).id()).isEqualTo(Conf.CREATE_NEW);
+    assertThat(decisions.get(decisions.size() - 1).label()).isEqualTo("New DMN...");
+    var discount = decisions.stream().filter(item -> item.id().equals("discount#discount")).findFirst().orElseThrow();
+    assertThat(discount.label()).isEqualTo("discount › discount");
+    assertThat(discount.description())
+        .as("the inputs and outputs of the decision, with their types")
+        .contains("in: purchaseAmount (number), type (string), country (string) · out: discount (number)");
+  }
+
+  @Test
+  void inscriptionMask_explainsEachGroupOnce() {
+    var ui = new RecordingUi();
+    new BusinessRuleTask().editor(ui.ui());
+
+    assertThat(ui.labels).hasSize(2);
+    assertThat(ui.labels.get(0)).as("the group Decision")
+        .startsWith("A decision of a .dmn file of this project.")
+        .endsWith("Choose 'New DMN...' to create a new DMN file.");
+    assertThat(ui.labels.get(1)).as("on top of the group New DMN, instead of a remark in every help text")
+        .startsWith("Only used with 'New DMN...'");
   }
 
   @Test

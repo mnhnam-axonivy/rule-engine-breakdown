@@ -128,3 +128,8 @@ The position of the matching rule does not matter: the engine evaluates all rows
   `ProjectDmnFiles` reads the `.dmn` files from it as a zip (under `META-INF/ivy`), so the Business Rule Task and
   the Portal find them on an engine as in the Designer. Writing a file (New DMN, `RuleEngine.export`)
   needs the project folder of the Designer.
+
+- **Dropdown**: the inscription API of 14.0.1 has no single-select and no button. The decision dropdown is the
+  multi-select widget, the first selected entry is used.
+
+- **Field picker**: fields are entered as field paths in text fields, until Core delivers a data picker.
