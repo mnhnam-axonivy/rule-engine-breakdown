@@ -279,14 +279,17 @@ A Quarkus service that loads DMN models at runtime, keeps all their versions and
   - Flyway migration `V1__model_versions.sql`, and `ModelVersionEntity` (Panache) with its queries.
   - An embedded H2 file database under `rule.engine.data-dir`, and an in-memory database for tests.
   - `VersionStore`:
-    - `register` stores a version only once per content: SHA-256 of the content, with line endings ignored;
+    - `register` stores a version only once per content (its hash);
     - `versions`, `get`, `exists`, `delete`, `modelNames`.
   - Version numbers count up per model.
+  - `RuleEngineException` with the error codes of the contract: the store answers MODEL_NOT_FOUND and
+    VERSION_NOT_FOUND.
 - **Outcome**: versions survive a restart, and the same file is stored once.
 - **Acceptance**
-  - The same file with CRLF and with LF line endings gives one version.
+  - The same content gives one version.
   - Version numbers count up per model.
-  - With the file database, versions are still there after a restart.
+  - An unknown model or version is answered with its code.
+  - The file database keeps the versions over a restart; PR A8 checks it with the container.
 - **Depends on**: A1: the tests use its `TestModels`.
 - **Reference**: `.../runtime/store/ModelVersionEntity.java`, `.../runtime/service/VersionStore.java`,
   `src/main/resources/db/migration/`.
@@ -329,13 +332,14 @@ A Quarkus service that loads DMN models at runtime, keeps all their versions and
     - keeps non-active versions for test runs in an LRU cache (`rule.engine.version-cache-size`).
   - `VersionService`:
     - one lock for all changes, and a check of model names;
-    - `register` validates, compiles, then stores;
+    - `register` validates, compiles, then stores, with the SHA-256 of the content as its hash, line endings
+      ignored;
     - evaluates the active version, or a given one.
   - A scheduler (`rule.engine.sync-interval`, 5 s) activates due versions and picks up activations made by another
     instance.
-  - `RuleEngineException` with its codes.
 - **Outcome**: a new active version answers the next evaluation, without a restart.
 - **Acceptance**
+  - The same file with CRLF and with LF line endings gives one version.
   - After v2 is activated, the next evaluation answers with version 2.
   - A version with an effective date two seconds ahead goes live after the next sync (1 s in the test profile).
   - A stored version that does not compile answers INTERNAL_ERROR with the reason; other models still work.

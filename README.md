@@ -60,3 +60,8 @@ Runtime loading works and is used. The fallback (Kogito code generation with a p
   image is built from `rule-engine/runtime` alone, without Ivy tooling. Only the tests of the runtime compile code of
   the connector, its packages `api` and `dmn.generator`. These two are plain Java 21 on purpose: an import such as
   `ch.ivyteam.ivy.environment.Ivy` in them breaks the tests of the runtime.
+
+- **Versions are stored in the runtime container**, not in the system database of the Ivy Engine as MARP-4895
+  describes. The container holds the engine and an embedded H2 database on the volume `/data`.
+  Consequence: the runtime is not stateless, several runtime instances need a shared database
+  (the store is JPA, switching the database is a configuration and driver change).
