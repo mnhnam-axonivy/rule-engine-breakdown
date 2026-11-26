@@ -20,6 +20,14 @@
          records and its DMN generator. The runtime and its image contain neither, so the Docker build needs nothing
          but this folder. -->
     <connector.sources>${project.basedir}/../src</connector.sources>
+    <!-- DMN editor served by the runtime: the standalone build of the Apache KIE DMN editor, same KIE release as
+         the engine. Not on Maven Central, so the build takes it from npm, checks it and keeps it in the local
+         Maven repository. -->
+    <dmn.editor.version>10.2.0</dmn.editor.version>
+    <dmn.editor.sha512>074a68624f010ac3a7f67e8dd0313dc79e9bd8b2f47f814bb26ace7f9f77974e99339e070e8ce0e4458472104cbe291e86ab4e94cbb915de9fe3fbb5c5e73884</dmn.editor.sha512>
+    <dmn.editor.file>dmn-editor-standalone-${dmn.editor.version}.tgz</dmn.editor.file>
+    <dmn.editor.url>https://registry.npmjs.org/@kie-tools/dmn-editor-standalone/-/${dmn.editor.file}</dmn.editor.url>
+    <dmn.editor.cache>${settings.localRepository}/.cache/kie-tools</dmn.editor.cache>
   </properties>
 
   <dependencyManagement>
@@ -140,6 +148,41 @@
               <sources>
                 <source>${connector.sources}</source>
               </sources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <!-- puts the KIE DMN editor next to the page /editor/: META-INF/resources/editor/lib/dmn-editor.js -->
+        <artifactId>maven-antrun-plugin</artifactId>
+        <version>3.1.0</version>
+        <executions>
+          <execution>
+            <id>dmn-editor</id>
+            <phase>generate-resources</phase>
+            <goals>
+              <goal>run</goal>
+            </goals>
+            <configuration>
+              <target>
+                <property name="dmn.editor.archive" value="${dmn.editor.cache}/${dmn.editor.file}" />
+                <property name="dmn.editor.lib" value="${project.build.outputDirectory}/META-INF/resources/editor/lib" />
+                <mkdir dir="${dmn.editor.cache}" />
+                <get src="${dmn.editor.url}" dest="${dmn.editor.archive}" skipexisting="true" quiet="true" />
+                <checksum file="${dmn.editor.archive}" algorithm="SHA-512" property="${dmn.editor.sha512}"
+                  verifyproperty="dmn.editor.verified" />
+                <fail message="${dmn.editor.archive} is not the expected DMN editor ${dmn.editor.version}. Delete it and build again.">
+                  <condition>
+                    <isfalse value="${dmn.editor.verified}" />
+                  </condition>
+                </fail>
+                <untar src="${dmn.editor.archive}" dest="${project.build.directory}/dmn-editor" compression="gzip" />
+                <copy file="${project.build.directory}/dmn-editor/package/dist/index.js" tofile="${dmn.editor.lib}/dmn-editor.js" />
+                <copy file="${project.build.directory}/dmn-editor/package/dist/index.js.LICENSE.txt" tofile="${dmn.editor.lib}/dmn-editor.js.LICENSE.txt" />
+                <copy file="${project.build.directory}/dmn-editor/package/dist/envelope.js.LICENSE.txt" tofile="${dmn.editor.lib}/dmn-editor-envelope.js.LICENSE.txt" />
+                <copy file="${project.build.directory}/dmn-editor/package/LICENSE" tofile="${dmn.editor.lib}/LICENSE.txt" />
+                <echo file="${dmn.editor.lib}/VERSION.txt">@kie-tools/dmn-editor-standalone ${dmn.editor.version}${line.separator}</echo>
+              </target>
             </configuration>
           </execution>
         </executions>
