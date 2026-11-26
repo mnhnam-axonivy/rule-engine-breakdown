@@ -120,3 +120,11 @@ The position of the matching rule does not matter: the engine evaluates all rows
   describes. The container holds the engine and an embedded H2 database on the volume `/data`.
   Consequence: the runtime is not stateless, several runtime instances need a shared database
   (the store is JPA, switching the database is a configuration and driver change).
+
+- **Model names**: the name of a model on the runtime is the file name of the `.dmn` file.
+  `RuleEngine.ModelPrefix` separates applications that share one runtime.
+
+- **Packed projects**: an engine keeps a deployed project as its `.iar`; `Project.directory()` is then that file.
+  `ProjectDmnFiles` reads the `.dmn` files from it as a zip (under `META-INF/ivy`), so the Business Rule Task and
+  the Portal find them on an engine as in the Designer. Writing a file (New DMN, `RuleEngine.export`)
+  needs the project folder of the Designer.
