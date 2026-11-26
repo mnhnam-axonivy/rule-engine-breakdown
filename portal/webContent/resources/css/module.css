@@ -5654,3 +5654,40 @@ body.edit-mode {
 .ui-focused:focus, .action-column-icon-button:focus {
   outline: 0.2rem solid var(--ivy-primary-lightest-color) !important;
 }
+
+/* =================== RULE MANAGEMENT (Admin Settings) ======================
+   The tab of the Axon Ivy Rules Engine: its rules, their versions and the DMN editor of Apache KIE.
+   Only shown when a rule engine project is in the security context. */
+
+.rule-management-intro {
+  max-width: 60rem;
+  color: var(--portal-detail-label-color, var(--text-color));
+}
+
+.rule-runtime-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+  font-size: var(--small-font-size, 0.875rem);
+}
+
+.rule-runtime-state::before {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--ivy-primary-color-grey-medium);
+}
+
+.rule-runtime-state.ok::before {
+  background: var(--ivy-tertinary-color-green-dark);
+}
+
+.rule-runtime-state.bad {
+  color: var(--ivy-tertinary-color-red-dark);
+}
+
+.rule-runtime-state.bad::before {
+  background: var(--ivy-tertinary-color-red-medium);
+}

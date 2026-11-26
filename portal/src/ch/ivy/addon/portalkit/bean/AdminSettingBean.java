@@ -12,6 +12,7 @@ import org.primefaces.component.tabview.TabView;
 import org.primefaces.event.TabChangeEvent;
 
 import com.axonivy.portal.components.util.FacesMessageUtils;
+import com.axonivy.portal.rule.RuleEngineBridge;
 
 import ch.ivy.addon.portalkit.enums.GlobalVariable.Option;
 import ch.ivy.addon.portalkit.enums.PortalPermission;
@@ -30,9 +31,11 @@ public class AdminSettingBean implements Serializable {
   public static final String ANNOUNCEMENT_SETTING_TAB_ID = "announcement-tab";
   public static final String ROLE_MANAGEMENT_TAB_ID = "role-management-tab";
   public static final String PASSWORD_VALIDATION_TAB_ID = "password-validation-tab";
+  public static final String RULE_MANAGEMENT_TAB_ID = "rule-management-tab";
   private boolean isShowRoleManagementTab;
   private boolean isTabChangeEventTriggered;
   private boolean isShowPasswordValidationTab;
+  private boolean isShowRuleManagementTab;
 
   public void initAdminTabViewConfig() {
     if (isTabChangeEventTriggered) {
@@ -41,6 +44,8 @@ public class AdminSettingBean implements Serializable {
     }
     isShowRoleManagementTab = canSeeRoleManagement();
     isShowPasswordValidationTab = canSeePasswordValidation();
+    // only if a project of the Axon Ivy Rules Engine is in the security context; the Portal does not depend on it
+    isShowRuleManagementTab = RuleEngineBridge.isAvailable();
     // Settings is the first tab, so its data must be loaded on the initial render
     // (onTabChange only fires when the user switches to another tab and back).
     invokeAdminSettingsComponentLogic("#{logic.initAdminSettings}", new Object[] {});
@@ -60,6 +65,8 @@ public class AdminSettingBean implements Serializable {
           break;
         case PASSWORD_VALIDATION_TAB_ID:
           break;
+        case RULE_MANAGEMENT_TAB_ID:
+          break; // RuleManagementBean loads the rules when the tab is shown
         default:
           break;
       }
@@ -118,5 +125,13 @@ public class AdminSettingBean implements Serializable {
 
   public void setShowPasswordValidationTab(boolean isShowPasswordValidationTab) {
     this.isShowPasswordValidationTab = isShowPasswordValidationTab;
+  }
+
+  public boolean isShowRuleManagementTab() {
+    return isShowRuleManagementTab;
+  }
+
+  public void setShowRuleManagementTab(boolean isShowRuleManagementTab) {
+    this.isShowRuleManagementTab = isShowRuleManagementTab;
   }
 }

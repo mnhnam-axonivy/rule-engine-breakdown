@@ -1,0 +1,48 @@
+<html xmlns="http://www.w3.org/1999/xhtml"
+  xmlns:f="jakarta.faces.core"
+  xmlns:h="jakarta.faces.html"
+  xmlns:ui="jakarta.faces.facelets"
+  xmlns:cc="jakarta.faces.composite"
+  xmlns:ic="http://ivyteam.ch/jsf/component"
+  xmlns:p="primefaces"
+  xmlns:pt="jakarta.faces.passthrough"
+  xmlns:c="jakarta.tags.core">
+<!--
+  The tab "Rule Management" of the Admin Settings: the rules (DMN models) of the Axon Ivy Rules Engine.
+  ruleManagementBean: com.axonivy.portal.bean.RuleManagementBean. It reaches the rule engine through
+  com.axonivy.portal.rule.RuleEngineBridge, the Portal has no dependency on it.
+-->
+<cc:interface componentType="IvyComponent">
+</cc:interface>
+
+<cc:implementation>
+  <c:set var="cmsPath" value="/ch.ivy.addon.portalkit.ui.jsf/components/RuleManagement/" />
+
+  <p:messages id="rule-management-messages" globalOnly="true" closable="true" styleClass="rule-management-messages" />
+
+  <h:panelGroup id="rule-management" layout="block" styleClass="rule-management">
+
+    <!-- THE DECISION RUNTIME -->
+    <h:form id="rule-list-form">
+      <div class="rule-management-header flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
+        <div class="rule-management-intro">
+          <p class="m-0">#{ivy.cms.co(cmsPath.concat('Description'))}</p>
+          <h:panelGroup styleClass="rule-runtime-state ok" rendered="#{ruleManagementBean.reachable}">
+            <h:outputText value="#{ivy.cms.co(cmsPath.concat('RuntimeConnected'), [ruleManagementBean.runtimeUrl])}" />
+          </h:panelGroup>
+          <h:panelGroup styleClass="rule-runtime-state bad" rendered="#{!ruleManagementBean.reachable and ruleManagementBean.notConfigured}">
+            <h:outputText value="#{ivy.cms.co(cmsPath.concat('Messages/NotConfigured'))}" />
+          </h:panelGroup>
+          <h:panelGroup styleClass="rule-runtime-state bad" rendered="#{!ruleManagementBean.reachable and !ruleManagementBean.notConfigured}">
+            <h:outputText value="#{ivy.cms.co(cmsPath.concat('Messages/Unreachable'), [ruleManagementBean.runtimeUrl])}" />
+          </h:panelGroup>
+        </div>
+        <p:commandButton id="refresh-rules" icon="ti ti-refresh" styleClass="ui-button-flat font-medium"
+          value="#{ivy.cms.co(cmsPath.concat('Refresh'))}" ariaLabel="#{ivy.cms.co(cmsPath.concat('Refresh'))}"
+          actionListener="#{ruleManagementBean.refresh}"
+          update="@form :#{cc.clientId}:rule-management-messages" />
+      </div>
+    </h:form>
+  </h:panelGroup>
+</cc:implementation>
+</html>
