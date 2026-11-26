@@ -22,10 +22,10 @@ This repository is built pull request by pull request, following [BREAKDOWN.md](
 
 | Module | Content |
 | --- | --- |
-| [rule-engine](rule-engine) | Ivy connector: program element `BusinessRuleTask`, client of the runtime (`com.axonivy.utils.rule.engine.api`: requests, responses, statuses), mapping, DMN generator. |
+| [rule-engine](rule-engine) | Ivy connector: program element `BusinessRuleTask`, client of the runtime (`com.axonivy.utils.rule.engine.api`: requests, responses, statuses), mapping, DMN generator, Java API `RuleEngine`. Variables `RuleEngine.*` in `config/variables.yaml`. |
 | [rule-engine/runtime](rule-engine/runtime) | Quarkus service, not part of the Ivy project around it: loads DMN models at runtime, stores their versions, evaluates decisions. Serves the DMN editor page `/editor/` (Apache KIE DMN editor, fetched from npm by the build). Contract: [openapi.yaml](rule-engine/runtime/openapi.yaml). |
 | [rule-engine-demo](rule-engine-demo) | The demo. |
-| [rule-engine-test](rule-engine-test) | Tests of the connector. |
+| [rule-engine-test](rule-engine-test) | Tests of the connector, with `MockRuntime`: a stand-in for the runtime that tests program. |
 
 ## Run it
 
@@ -67,6 +67,10 @@ The client of the connector follows the design of LangChain4j:
   service provider interface `HttpClientBuilderFactory` (`HttpClientBuilderLoader`).
 - `client.http.ivy`: the default transport. It uses the REST client `ruleEngine` of Axon Ivy (Jersey), the same
   way Smart Workflow plugs the Ivy REST client into LangChain4j. Calls appear in the tracing of the engine.
+- `client`: `RuleEngineClient` with a builder (`baseUrl`, `apiKey`, timeouts, `logRequests`, custom headers),
+  and exceptions for unreachable, timeout and error answers.
+- The typed requests and responses are the records of `com.axonivy.utils.rule.engine.api`. The runtime has records
+  of its own; `ContractTest` fails if the two do not have the same fields.
 
 ## Spike result: runtime loading (MARP-4893)
 
