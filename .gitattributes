@@ -3,3 +3,7 @@
 *.png binary
 *.woff2 binary
 *.tgz binary
+
+# the Axon Ivy Portal is kept byte for byte as it was released, line endings included
+portal/** -text
+portal-components/** -text
