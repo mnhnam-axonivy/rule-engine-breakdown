@@ -8,6 +8,7 @@ import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.parameters.Parameter;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 
+import com.axonivy.utils.rule.engine.runtime.api.model.ActivateRequest;
 import com.axonivy.utils.rule.engine.runtime.api.model.EvaluateRequest;
 import com.axonivy.utils.rule.engine.runtime.api.model.EvaluateResponse;
 import com.axonivy.utils.rule.engine.runtime.api.model.ModelInfo;
@@ -19,9 +20,11 @@ import com.axonivy.utils.rule.engine.runtime.service.RuleEngineException;
 import com.axonivy.utils.rule.engine.runtime.service.VersionService;
 import com.axonivy.utils.rule.engine.runtime.service.VersionService.EvaluationOutcome;
 import com.axonivy.utils.rule.engine.runtime.service.VersionService.RegisterCommand;
+import com.axonivy.utils.rule.engine.runtime.store.ModelVersionEntity;
 
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
@@ -54,6 +57,14 @@ public class ModelsResource {
   public ModelInfo model(@PathParam("model") String model) {
     service.versions(model); // fails with MODEL_NOT_FOUND
     return describe(model);
+  }
+
+  @DELETE
+  @Path("{model}")
+  @Operation(summary = "Removes a model with all its versions.")
+  public Response delete(@PathParam("model") String model) {
+    service.delete(model);
+    return Response.noContent().build();
   }
 
   @GET
@@ -123,11 +134,56 @@ public class ModelsResource {
   }
 
   @POST
+  @Path("{model}/versions/{version}/approve")
+  @Operation(summary = "Releases a draft for activation.")
+  public ModelVersion approve(@PathParam("model") String model, @PathParam("version") int version) {
+    return Responses.version(service.approve(model, version));
+  }
+
+  @POST
+  @Path("{model}/versions/{version}/activate")
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Operation(summary = "Makes a version the active one, now or at an effective date.",
+      description = "The version that was active becomes retired. No restart, running evaluations are not affected.")
+  public ModelVersion activate(@PathParam("model") String model, @PathParam("version") int version,
+      ActivateRequest request) {
+    String user = request == null ? null : request.user();
+    OffsetDateTime effectiveDate = request == null ? null : request.effectiveDate();
+    service.activate(model, version, user, effectiveDate);
+    return Responses.version(service.version(model, version));
+  }
+
+  @POST
+  @Path("{model}/versions/{version}/retire")
+  @Operation(summary = "Withdraws a version that is not active.")
+  public ModelVersion retire(@PathParam("model") String model, @PathParam("version") int version) {
+    return Responses.version(service.retire(model, version));
+  }
+
+  @POST
+  @Path("{model}/rollback")
+  @Operation(summary = "Activates the version that was active before the current one.")
+  public ModelVersion rollback(@PathParam("model") String model, @QueryParam("user") String user) {
+    ModelVersionEntity previous = service.rollback(model, user);
+    return Responses.version(service.version(model, previous.version));
+  }
+
+  @POST
   @Path("{model}/evaluate")
   @Consumes(MediaType.APPLICATION_JSON)
   @Operation(summary = "Evaluates the active version of a model.")
   public EvaluateResponse evaluate(@PathParam("model") String model, EvaluateRequest request) {
     var outcome = service.evaluate(model, decision(request), input(request));
+    return toResponse(outcome);
+  }
+
+  @POST
+  @Path("{model}/versions/{version}/evaluate")
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Operation(summary = "Evaluates a specific version, e.g. to test a draft before it goes live.")
+  public EvaluateResponse evaluateVersion(@PathParam("model") String model, @PathParam("version") int version,
+      EvaluateRequest request) {
+    var outcome = service.evaluate(model, version, decision(request), input(request));
     return toResponse(outcome);
   }
 

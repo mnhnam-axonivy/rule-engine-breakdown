@@ -108,6 +108,12 @@ class ModelsApiTest {
     assertThat(statuses).containsExactly("DRAFT", "DRAFT", "ACTIVE");
 
     evaluate(model, gold(1500)).body("results.discount", equalTo(15)).body("version", equalTo(1));
+    // a draft can be evaluated explicitly for a test run
+    given().contentType(ContentType.JSON).body(Map.of("input", gold(1500)))
+        .post("/api/models/{model}/versions/3/evaluate", model).then()
+        .statusCode(200)
+        .body("version", equalTo(3))
+        .body("results.discount", equalTo(25));
   }
 
   @Test
@@ -172,6 +178,29 @@ class ModelsApiTest {
   }
 
   @Test
+  void rollbackActivatesPreviousVersion() {
+    String model = TestModels.uniqueName("rollback");
+    uploadXml(model, TestModels.discount(10)).statusCode(201);
+    register(model, TestModels.discount(20), Map.of("activate", true)).statusCode(201);
+    register(model, TestModels.discount(30), Map.of("activate", true)).statusCode(201);
+    evaluate(model, gold(1500)).body("version", equalTo(3));
+
+    given().post("/api/models/{model}/rollback", model).then()
+        .statusCode(200)
+        .body("version", equalTo(2))
+        .body("status", equalTo("ACTIVE"));
+    evaluate(model, gold(1500)).body("version", equalTo(2)).body("results.discount", equalTo(20));
+    version(model, 3).body("status", equalTo("RETIRED"));
+
+    given().post("/api/models/{model}/rollback", model).then().statusCode(200).body("version", equalTo(1));
+    evaluate(model, gold(1500)).body("version", equalTo(1)).body("results.discount", equalTo(10));
+
+    given().post("/api/models/{model}/rollback", model).then()
+        .statusCode(409)
+        .body("code", equalTo("INVALID_STATE"));
+  }
+
+  @Test
   void projectRedeployment_replacesProjectVersion() {
     String model = TestModels.uniqueName("project");
     register(model, TestModels.discount(10), Map.of("source", "PROJECT")).statusCode(201);
@@ -184,6 +213,34 @@ class ModelsApiTest {
         .statusCode(200)
         .body("version", equalTo(1))
         .body("status", equalTo("ACTIVE"));
+  }
+
+  @Test
+  void projectRedeployment_doesNotOverwriteVersionActivatedFromPortal() {
+    String model = TestModels.uniqueName("portal");
+    register(model, TestModels.discount(10), Map.of("source", "PROJECT")).statusCode(201);
+    register(model, TestModels.discount(20), Map.of("source", "PORTAL", "author", "rule.owner"))
+        .statusCode(201)
+        .body("status", equalTo("DRAFT"));
+    given().post("/api/models/{model}/versions/2/approve", model).then()
+        .statusCode(200).body("status", equalTo("APPROVED"));
+    given().contentType(ContentType.JSON).body(Map.of("user", "rule.approver"))
+        .post("/api/models/{model}/versions/2/activate", model).then()
+        .statusCode(200)
+        .body("status", equalTo("ACTIVE"))
+        .body("activatedBy", equalTo("rule.approver"));
+
+    // the project is deployed again with a changed file: it is registered, but does not go live
+    register(model, TestModels.discount(30), Map.of("source", "PROJECT"))
+        .statusCode(201)
+        .body("version", equalTo(3))
+        .body("status", equalTo("DRAFT"));
+    // and neither does the unchanged file of the initial deployment
+    register(model, TestModels.discount(10), Map.of("source", "PROJECT"))
+        .statusCode(200)
+        .body("version", equalTo(1))
+        .body("status", equalTo("RETIRED"));
+    evaluate(model, gold(1500)).body("version", equalTo(2)).body("results.discount", equalTo(20));
   }
 
   @Test
@@ -205,6 +262,19 @@ class ModelsApiTest {
     }
     assertThat(version).as("the scheduled version becomes active without any further call").isEqualTo(2);
     assertThat(OffsetDateTime.now()).isAfterOrEqualTo(effective);
+  }
+
+  @Test
+  void retire_onlyVersionsThatAreNotActive() {
+    String model = TestModels.uniqueName("retire");
+    uploadXml(model, TestModels.discount(10)).statusCode(201);
+    uploadXml(model, TestModels.discount(20)).statusCode(201);
+    given().post("/api/models/{model}/versions/1/retire", model).then()
+        .statusCode(409).body("code", equalTo("INVALID_STATE"));
+    given().post("/api/models/{model}/versions/2/retire", model).then()
+        .statusCode(200).body("status", equalTo("RETIRED"));
+    given().post("/api/models/{model}/versions/9/retire", model).then()
+        .statusCode(404).body("code", equalTo("VERSION_NOT_FOUND"));
   }
 
   @Test
@@ -240,6 +310,16 @@ class ModelsApiTest {
 
     assertThat(registry.active(model)).isPresent();
     evaluate(model, gold(1500)).statusCode(200).body("version", equalTo(2)).body("results.discount", equalTo(20));
+  }
+
+  @Test
+  void deleteRemovesModel() {
+    String model = TestModels.uniqueName("delete");
+    uploadXml(model, TestModels.discount(10)).statusCode(201);
+    given().delete("/api/models/{model}", model).then().statusCode(204);
+    evaluate(model, gold(1500)).statusCode(404);
+    uploadXml(model, TestModels.discount(20)).statusCode(201).body("version", equalTo(1));
+    evaluate(model, gold(1500)).body("results.discount", equalTo(20));
   }
 
   @Test
