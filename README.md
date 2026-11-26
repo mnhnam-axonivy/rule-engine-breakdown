@@ -58,6 +58,16 @@ Java 25 and Maven. The Ivy modules are built with the project-build-plugin, whic
 | `mvn test -Pperformance -f rule-engine/runtime` | Performance baseline, written to `rule-engine/runtime/target/performance-baseline.md`. |
 | `mvn quarkus:dev -f rule-engine/runtime` | Runtime in dev mode on port 8090. |
 
+## How the REST client is built
+
+The client of the connector follows the design of LangChain4j:
+
+- `client.http`: the transport abstraction `HttpClient`, `HttpClientBuilder`, `HttpRequest`,
+  `SuccessfulHttpResponse`, `HttpException` and `LoggingHttpClient`. The implementation is found through the
+  service provider interface `HttpClientBuilderFactory` (`HttpClientBuilderLoader`).
+- `client.http.ivy`: the default transport. It uses the REST client `ruleEngine` of Axon Ivy (Jersey), the same
+  way Smart Workflow plugs the Ivy REST client into LangChain4j. Calls appear in the tracing of the engine.
+
 ## Spike result: runtime loading (MARP-4893)
 
 Runtime loading works and is used. The fallback (Kogito code generation with a pipeline template) is not needed.
