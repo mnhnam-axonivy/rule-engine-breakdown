@@ -21,6 +21,7 @@ public class RuleTaskEditor {
 
   public void editor(ProgramUiBuilder ui) {
     Project project = currentProject();
+    DesignTimeCreation.createPending(project);
 
     ui.group("⚖️ Decision")
         .add(ui.multiSelect(Conf.DECISION)
