@@ -68,6 +68,7 @@ Java 25 and Maven. The Ivy modules are built with the project-build-plugin, whic
 | --- | --- |
 | `mvn verify` | Everything without Docker: tests of the runtime (REST API, version rules, DMN engine) and tests of the connector with a mocked runtime. |
 | `docker compose build` | The image `axonivy/rule-engine-runtime:dev`, built from `rule-engine/runtime`. |
+| `docker compose build` then `mvn verify -Pcontainer.test -pl rule-engine-test -am` | `RuleEngineContainerTest`: the connector against the real runtime in a container (Testcontainers). `-Drule.engine.image=…` tests another image. If Testcontainers times out waiting for the container (seen with Rancher Desktop), set `TESTCONTAINERS_HOST_OVERRIDE=127.0.0.1`. |
 | `mvn test -Pperformance -f rule-engine/runtime` | Performance baseline, written to `rule-engine/runtime/target/performance-baseline.md`. |
 | `mvn quarkus:dev -f rule-engine/runtime` | Runtime in dev mode on port 8090. |
 
