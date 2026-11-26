@@ -33,7 +33,11 @@ class TestRuleManagement {
       "ruleManagementInfo()",
       "ruleManagementModels()",
       "ruleManagementVersions(String)",
-      "ruleManagementContent(String,Integer)");
+      "ruleManagementContent(String,Integer)",
+      "ruleManagementValidate(String)",
+      "ruleManagementSave(String,String,String,String,Boolean)",
+      "ruleManagementActivate(String,Integer,String)",
+      "ruleManagementRollback(String,String)");
 
   private static final String DMN = "<definitions xmlns=\"https://www.omg.org/spec/DMN/20230324/MODEL/\" name=\"discount\"/>";
 
@@ -125,6 +129,69 @@ class TestRuleManagement {
     assertThat(versions.get(0)).containsEntry("status", "ACTIVE").containsEntry("source", "PORTAL")
         .containsEntry("description", "Gold 20").containsEntry("activatedBy", "admin")
         .containsEntry("activatedAt", "2026-11-17T10:01Z");
+  }
+
+  @Test
+  void saveIsAVersionFromThePortal() {
+    MockRuntime.onRegister(call -> MockRuntime.json(201, """
+        {"model":"discount","version":3,"status":"ACTIVE","source":"PORTAL","author":"admin","created":true}"""));
+
+    Map<String, Object> version = (Map<String, Object>) result(call("ruleManagementSave(String,String,String,String,Boolean)",
+        params("model", "discount", "dmn", DMN, "author", "admin", "description", "Gold 20", "activate", true)));
+
+    assertThat(version).containsEntry("version", 3).containsEntry("status", "ACTIVE").containsEntry("created", true);
+    var sent = MockRuntime.calls("register").get(0).body();
+    assertThat(sent.get("source").asString()).isEqualTo("PORTAL");
+    assertThat(sent.get("author").asString()).isEqualTo("admin");
+    assertThat(sent.get("description").asString()).isEqualTo("Gold 20");
+    assertThat(sent.get("activate").asBoolean()).isTrue();
+    assertThat(sent.get("content").asString()).isEqualTo(DMN);
+  }
+
+  @Test
+  void aDraftStaysADraft() {
+    call("ruleManagementSave(String,String,String,String,Boolean)",
+        params("model", "discount", "dmn", DMN, "author", "admin", "description", "", "activate", false));
+
+    var sent = MockRuntime.calls("register").get(0).body();
+    assertThat(sent.get("activate").asBoolean()).isFalse();
+    assertThat(sent.has("description")).as("an empty description is not sent").isFalse();
+  }
+
+  @Test
+  void aModelWithErrorsIsRefusedWithTheFindings() {
+    MockRuntime.onRegister(call -> MockRuntime.error(422, "INVALID_MODEL", "The model has errors.",
+        "Rule 3: the input entry 'Goldd' is not an allowed value"));
+
+    Map<String, Object> answer = call("ruleManagementSave(String,String,String,String,Boolean)",
+        params("model", "discount", "dmn", DMN, "author", "admin", "description", null, "activate", true));
+
+    assertThat(answer.get("result")).isNull();
+    Map<String, Object> error = (Map<String, Object>) answer.get("error");
+    assertThat(error).containsEntry("code", "INVALID_MODEL");
+    assertThat((List<String>) error.get("details")).containsExactly("ERROR: Rule 3: the input entry 'Goldd' is not an allowed value");
+  }
+
+  @Test
+  void activateAndRollBack() {
+    Map<String, Object> activated = (Map<String, Object>) result(call("ruleManagementActivate(String,Integer,String)",
+        params("model", "discount", "version", 2, "author", "admin")));
+    assertThat(activated).containsEntry("version", 2).containsEntry("status", "ACTIVE").containsEntry("activatedBy", "admin");
+
+    Map<String, Object> answer = call("ruleManagementRollback(String,String)", params("model", "discount", "author", "admin"));
+    assertThat((Map<String, Object>) answer.get("error")).containsEntry("code", "INVALID_STATE");
+    assertThat(MockRuntime.calls("rollback").get(0).body().get("user").asString()).isEqualTo("admin");
+  }
+
+  @Test
+  void validate() {
+    MockRuntime.onValidate(call -> MockRuntime.json(200, """
+        {"valid":false,"messages":[{"severity":"ERROR","message":"Missing output","sourceId":"_rule3"}]}"""));
+
+    Map<String, Object> validation = (Map<String, Object>) result(call("ruleManagementValidate(String)", params("dmn", DMN)));
+
+    assertThat(validation).containsEntry("valid", false)
+        .containsEntry("messages", List.of("ERROR: Missing output (_rule3)"));
   }
 
   @Test
