@@ -49,6 +49,7 @@ public final class ModelDeployer {
         .source(VersionSource.PROJECT)
         .build());
     REGISTERED.put(key(client, runtimeModel), dmn.hash());
+    ActiveVersionInputs.forget(client, runtimeModel); // the active version may have changed
     if (Boolean.TRUE.equals(version.created())) {
       Ivy.log().info("Rule engine: registered " + dmn.file().path().getFileName() + " as version "
           + version.version() + " of model '" + runtimeModel + "' (" + version.status() + ")");
@@ -64,6 +65,7 @@ public final class ModelDeployer {
   /** The runtime does not know the model any more, e.g. its data was deleted: register it again next time. */
   public static void forget(RuleEngineClient client, String runtimeModel) {
     REGISTERED.remove(key(client, runtimeModel));
+    ActiveVersionInputs.forget(client, runtimeModel);
   }
 
   /**
@@ -85,6 +87,7 @@ public final class ModelDeployer {
   /** Forgets everything that was registered, so every file is registered again with its next use. */
   public static void reset() {
     REGISTERED.clear();
+    ActiveVersionInputs.reset();
   }
 
   private static String key(RuleEngineClient client, String runtimeModel) {
