@@ -13,6 +13,7 @@
     <module>rule-engine</module>
     <module>rule-engine-demo</module>
     <module>rule-engine-test</module>
+    <module>rule-engine-product</module>
   </modules>
 
   <build>

@@ -4,6 +4,8 @@ Replacement of the built-in Drools engine of Axon Ivy: DMN rules run in a separa
 the Ivy Engine and are used in processes through the program element **Business Rule Task**.
 Based on Kogito and Drools from the open source project Apache KIE.
 
+User documentation: [rule-engine-product/README.md](rule-engine-product/README.md).
+
 This repository is built pull request by pull request, following [BREAKDOWN.md](BREAKDOWN.md).
 
 ```
@@ -26,6 +28,7 @@ This repository is built pull request by pull request, following [BREAKDOWN.md](
 | [rule-engine/runtime](rule-engine/runtime) | Quarkus service, not part of the Ivy project around it: loads DMN models at runtime, stores their versions, evaluates decisions. Serves the DMN editor page `/editor/` (Apache KIE DMN editor, fetched from npm by the build). Contract: [openapi.yaml](rule-engine/runtime/openapi.yaml). |
 | [rule-engine-demo](rule-engine-demo) | The demo: an invoice with five lines whose discount is decided by one decision table, `dmn/invoice-discount.dmn`, from the customer tier and the order amount. |
 | [rule-engine-test](rule-engine-test) | Tests of the connector, with `MockRuntime`: a stand-in for the runtime that tests program. |
+| [rule-engine-product](rule-engine-product) | Market product: README, product.json. |
 | [portal](portal), [portal-components](portal-components) | Axon Ivy Portal 14.0.1.2, imported unchanged from [axonivy-market/portal](https://github.com/axonivy-market/portal), tag `14.0.1.2` (commit `474b8205`), as the base of the tab **Rule Management**. Not part of the Maven build of the rule engine, see [Rule Management in the Portal](#rule-management-in-the-portal). |
 
 ## Run it
