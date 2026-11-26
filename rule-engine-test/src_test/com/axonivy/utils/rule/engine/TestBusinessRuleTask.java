@@ -3,11 +3,13 @@ package com.axonivy.utils.rule.engine;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.axonivy.utils.rule.engine.RuleEngineConfig.Var;
+import com.axonivy.utils.rule.engine.deploy.ModelDeployer;
 import com.axonivy.utils.rule.engine.program.internal.RuleErrors;
 import com.axonivy.utils.rule.engine.program.internal.RuleTaskExecutor;
 import com.axonivy.utils.rule.engine.test.Address;
@@ -38,6 +40,7 @@ class TestBusinessRuleTask {
   @BeforeEach
   public void setup(AppFixture fixture) {
     MockRuntime.reset();
+    ModelDeployer.reset();
     fixture.var(Var.URL, MockRuntime.url());
     fixture.var(Var.API_KEY, "test-key");
     fixture.var(Var.AUTO_DEPLOY, "true");
@@ -256,6 +259,68 @@ class TestBusinessRuleTask {
 
     assertThat(result.getErrorCode()).isEqualTo(RuleErrors.MAPPING);
     assertThat(result.getErrorMessage()).contains("No decision selected");
+  }
+
+  @Test
+  void dmnFileOfTheProject_isRegisteredAsVersion_once(BpmClient client) {
+    MockRuntime.onEvaluate(call -> MockRuntime.results(1, "{\"discount\":15}"));
+    var data = sampleData();
+    data.setType("Gold");
+
+    TestData first = run(client, "demoDiscount", data);
+    TestData second = run(client, "demoDiscount", data);
+
+    assertThat(first.getErrorMessage()).isNull();
+    assertThat(first.getDiscount().intValue()).isEqualTo(15);
+    assertThat(second.getDiscount().intValue()).isEqualTo(15);
+    var registrations = MockRuntime.calls("register");
+    assertThat(registrations).as("unchanged content is registered once").hasSize(1);
+    assertThat(registrations.get(0).model()).isEqualTo("discount");
+    assertThat(registrations.get(0).body().get("source").asString()).isEqualTo("PROJECT");
+    assertThat(registrations.get(0).body().get("content").asString()).contains("<definitions").contains("discount");
+    assertThat(registrations.get(0).body().has("activate")).as("the runtime decides what goes live").isFalse();
+    JsonNode input = MockRuntime.calls("evaluate").get(0).body().get("input");
+    assertThat(input.propertyNames()).as("the inputs of dmn/discount.dmn")
+        .containsExactlyInAnyOrder("purchaseAmount", "type", "country");
+    assertThat(input.get("type").asString()).isEqualTo("Gold");
+  }
+
+  @Test
+  void modelPrefix_namesTheModelOnTheRuntime(BpmClient client, AppFixture fixture) {
+    fixture.var(Var.MODEL_PREFIX, "sales-");
+    MockRuntime.onEvaluate(call -> MockRuntime.results(1, "{\"discount\":15}"));
+
+    run(client, "demoDiscount", sampleData());
+
+    assertThat(MockRuntime.calls("register").get(0).model()).isEqualTo("sales-discount");
+    assertThat(MockRuntime.calls("evaluate").get(0).model()).isEqualTo("sales-discount");
+  }
+
+  @Test
+  void runtimeThatLostTheModel_getsItAgain(BpmClient client) {
+    var evaluations = new AtomicInteger();
+    MockRuntime.onEvaluate(call -> evaluations.incrementAndGet() == 2
+        ? MockRuntime.error(404, "MODEL_NOT_FOUND", "Model 'discount' is not loaded.")
+        : MockRuntime.results(1, "{\"discount\":15}"));
+
+    run(client, "demoDiscount", sampleData());
+    TestData afterRuntimeWasReset = run(client, "demoDiscount", sampleData());
+
+    assertThat(afterRuntimeWasReset.getErrorMessage()).isNull();
+    assertThat(afterRuntimeWasReset.getDiscount().intValue()).isEqualTo(15);
+    assertThat(MockRuntime.calls("register")).as("registered again after MODEL_NOT_FOUND").hasSize(2);
+    assertThat(MockRuntime.calls("evaluate")).hasSize(3);
+  }
+
+  @Test
+  void autoDeployOff_doesNotRegister(BpmClient client, AppFixture fixture) {
+    fixture.var(Var.AUTO_DEPLOY, "false");
+    MockRuntime.onEvaluate(call -> MockRuntime.results(1, "{\"discount\":15}"));
+
+    TestData result = run(client, "demoDiscount", sampleData());
+
+    assertThat(result.getErrorMessage()).isNull();
+    assertThat(MockRuntime.calls("register")).isEmpty();
   }
 
   static TestData run(BpmClient client, String signature, TestData data) {
