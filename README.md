@@ -117,6 +117,7 @@ are the contract between the two: the Portal side is built against them.
 | Side | Where | What |
 | --- | --- | --- |
 | Rule engine | `rule-engine/process/Portal/RuleManagement.p.json`, `com.axonivy.utils.rule.engine.portal.RuleManagement` | The bridge. One start per call, every start answers `result` and `error`, made of JDK types only (String, Integer, Boolean, List, Map), so the Portal needs no class of the rule engine. |
+| Rule engine | `com.axonivy.utils.rule.engine.portal.DmnEditorScript` | REST resource `{app}/api/rule-engine/dmn-editor/dmn-editor.js`: the KIE DMN editor, fetched once from the runtime (`/editor/lib/dmn-editor.js`) and kept in memory. The browser never talks to the runtime. |
 
 The contract, tested by `TestRuleManagement` in `rule-engine-test`:
 
@@ -174,3 +175,8 @@ runtime such as INVALID_MODEL, or FAILED), `message` and `details`.
 - **New DMN...**: without a change event, selecting the entry cannot generate the file at that moment.
   The file is generated when an inscription mask of the project is opened the next time, or when the element
   is executed. The selection switches to the generated decision through the config migrator of the element.
+
+- **Portal editor in the engine, not the runtime**: the Portal tab could embed the page `/editor/` of the
+  runtime in a frame. It does not: that page needs the runtime to be reachable from every browser and the API key
+  in the browser, and it has its own look and its own list of models. The tab is built from Portal components;
+  only the KIE editor itself is embedded, served by the engine.
