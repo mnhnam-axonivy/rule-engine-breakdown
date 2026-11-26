@@ -24,7 +24,7 @@ This repository is built pull request by pull request, following [BREAKDOWN.md](
 | --- | --- |
 | [rule-engine](rule-engine) | Ivy connector: program element `BusinessRuleTask`, client of the runtime (`com.axonivy.utils.rule.engine.api`: requests, responses, statuses), mapping, DMN generator, Java API `RuleEngine`. Variables `RuleEngine.*` in `config/variables.yaml`. |
 | [rule-engine/runtime](rule-engine/runtime) | Quarkus service, not part of the Ivy project around it: loads DMN models at runtime, stores their versions, evaluates decisions. Serves the DMN editor page `/editor/` (Apache KIE DMN editor, fetched from npm by the build). Contract: [openapi.yaml](rule-engine/runtime/openapi.yaml). |
-| [rule-engine-demo](rule-engine-demo) | The demo. |
+| [rule-engine-demo](rule-engine-demo) | The demo: an invoice with five lines whose discount is decided by one decision table, `dmn/invoice-discount.dmn`, from the customer tier and the order amount. |
 | [rule-engine-test](rule-engine-test) | Tests of the connector, with `MockRuntime`: a stand-in for the runtime that tests program. |
 | [portal](portal), [portal-components](portal-components) | Axon Ivy Portal 14.0.1.2, imported unchanged from [axonivy-market/portal](https://github.com/axonivy-market/portal), tag `14.0.1.2` (commit `474b8205`), as the base of the tab **Rule Management**. Not part of the Maven build of the rule engine, see [Rule Management in the Portal](#rule-management-in-the-portal). |
 
@@ -35,11 +35,16 @@ docker compose up -d --build      # decision runtime on http://localhost:8090
 ```
 
 The runtime is ready when `http://localhost:8090/q/health/ready` is UP. The API is described at
-`http://localhost:8090/q/swagger-ui`. Load a model and evaluate it:
+`http://localhost:8090/q/swagger-ui`. Load the model of the demo and evaluate it:
 
 ```
-curl -X POST -H "Content-Type: application/xml" --data-binary @discount.dmn      http://localhost:8090/api/models/discount/versions
-curl -X POST -H "Content-Type: application/json"      -d '{"decision":"discount","input":{"customerTier":"Gold","orderAmount":12000}}'      http://localhost:8090/api/models/discount/evaluate
+curl -X POST -H "Content-Type: application/xml" --data-binary @rule-engine-demo/dmn/invoice-discount.dmn \
+     http://localhost:8090/api/models/invoice-discount/versions
+curl -X POST -H "Content-Type: application/json" \
+     -d '{"decision":"discount","input":{"customerTier":"Gold","orderAmount":12000}}' \
+     http://localhost:8090/api/models/invoice-discount/evaluate
+# {"decision":"discount","model":"invoice-discount","result":{"discountPercent":8,
+#  "discountReason":"Gold, order of 10,000 or more"},"results":{...},"version":1}
 ```
 
 Every input of the decisions it needs must be in `input`, `null` if it has no value. Set `RULE_ENGINE_API_KEY` to

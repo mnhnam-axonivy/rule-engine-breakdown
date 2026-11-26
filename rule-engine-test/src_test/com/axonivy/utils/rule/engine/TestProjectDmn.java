@@ -96,7 +96,9 @@ class TestProjectDmn {
   @Test
   void dmnFilesOfTheProjectAndItsRequiredProjects_areFound() {
     var files = ProjectDmnFiles.list(Project.current());
-    assertThat(files).extracting(ProjectDmnFiles.DmnFile::model).contains("discount", "invoice-approval");
+    assertThat(files).extracting(ProjectDmnFiles.DmnFile::model).contains("discount", "invoice-approval", "invoice-discount");
+    assertThat(ProjectDmnFiles.find(Project.current(), "invoice-discount").orElseThrow().project())
+        .as("a file of the required project rule-engine-demo").startsWith("rule-engine-demo");
 
     var discount = ProjectDmnFiles.load(ProjectDmnFiles.find(Project.current(), "discount").orElseThrow());
     assertThat(discount.parseError()).isNull();
@@ -152,6 +154,20 @@ class TestProjectDmn {
         .containsExactlyInAnyOrder("amount", "supplierRating", "hasPurchaseOrder");
     assertThat(info.decision("dueDate").orElseThrow().requiredInputs()).containsExactly("invoiceDate");
     assertThat(info.decision("dueDate").orElseThrow().typeRef()).isEqualTo("date");
+  }
+
+  /** The model of the demo: one decision table with two outputs. */
+  @Test
+  void modelOfTheDemo() {
+    var file = ProjectDmnFiles.find(Project.current(), "invoice-discount").orElseThrow();
+    DmnModelInfo info = ProjectDmnFiles.load(file).info();
+
+    assertThat(info.decisions()).extracting(DmnModelInfo.Decision::name).containsExactly("discount");
+    assertThat(info.inputTypes()).containsEntry("customerTier", "string").containsEntry("orderAmount", "number");
+    assertThat(info.decision("discount").orElseThrow().requiredInputs())
+        .containsExactlyInAnyOrder("customerTier", "orderAmount");
+    assertThat(DmnModelInfo.describeOutputs(info.decision("discount").orElseThrow()))
+        .isEqualTo("discountPercent (number), discountReason (string)");
   }
 
   @Test

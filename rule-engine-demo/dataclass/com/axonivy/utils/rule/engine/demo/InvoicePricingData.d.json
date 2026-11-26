@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.axonivy.com/14.0/project/data-class.json",
+  "simpleName": "InvoicePricingData",
+  "namespace": "com.axonivy.utils.rule.engine.demo",
+  "comment": "The data of the callable InvoicePricing.",
+  "fields": [
+    {
+      "name": "invoice",
+      "type": "com.axonivy.utils.rule.engine.demo.Invoice"
+    },
+    {
+      "name": "errorCode",
+      "comment": "Set if the rules could not decide, e.g. rule:engine:unavailable"
+    },
+    {
+      "name": "errorMessage"
+    }
+  ]
+}
