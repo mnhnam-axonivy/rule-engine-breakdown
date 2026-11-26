@@ -2,6 +2,9 @@ package com.axonivy.utils.rule.engine;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -10,6 +13,7 @@ import org.junit.jupiter.api.Test;
 
 import com.axonivy.utils.rule.engine.RuleEngineConfig.Var;
 import com.axonivy.utils.rule.engine.deploy.ModelDeployer;
+import com.axonivy.utils.rule.engine.dmn.ProjectDmnFiles;
 import com.axonivy.utils.rule.engine.program.internal.RuleErrors;
 import com.axonivy.utils.rule.engine.program.internal.RuleTaskExecutor;
 import com.axonivy.utils.rule.engine.test.Address;
@@ -18,6 +22,7 @@ import com.axonivy.utils.rule.engine.test.Segment;
 import com.axonivy.utils.rule.engine.test.TestData;
 import com.axonivy.utils.rule.engine.test.mock.MockRuntime;
 
+import ch.ivyteam.ivy.application.project.Project;
 import ch.ivyteam.ivy.bpm.engine.client.BpmClient;
 import ch.ivyteam.ivy.bpm.engine.client.ExecutionResult;
 import ch.ivyteam.ivy.bpm.engine.client.element.BpmProcess;
@@ -372,6 +377,29 @@ class TestBusinessRuleTask {
 
     assertThat(result.getErrorMessage()).isNull();
     assertThat(MockRuntime.calls("register")).isEmpty();
+  }
+
+  /** "New DMN...": the element generates its file the first time it runs, then evaluates it like any other. */
+  @Test
+  void newDmn_isGeneratedWhenTheElementRuns(BpmClient client) throws IOException {
+    Path generated = Project.current().directory().resolve("dmn").resolve("test-generated.dmn");
+    try {
+      MockRuntime.onEvaluate(call -> MockRuntime.results(1, "{\"discount\":5}"));
+
+      TestData result = run(client, "create", sampleData());
+
+      assertThat(generated).as("generated in the dmn folder of the project").exists();
+      assertThat(result.getErrorMessage()).isNull();
+      assertThat(result.getDiscount().intValue()).as("the result of the generated decision, by name").isEqualTo(5);
+      assertThat(MockRuntime.calls("register").get(0).model()).isEqualTo("test-generated");
+      var call = MockRuntime.calls("evaluate").get(0);
+      assertThat(call.body().get("decision").asString()).isEqualTo("discount");
+      assertThat(call.body().get("input").propertyNames()).as("one input per selected field, named like it")
+          .containsExactlyInAnyOrder("amount", "segment", "vip", "address");
+    } finally {
+      Files.deleteIfExists(generated);
+      ProjectDmnFiles.refresh();
+    }
   }
 
   static TestData run(BpmClient client, String signature, TestData data) {
