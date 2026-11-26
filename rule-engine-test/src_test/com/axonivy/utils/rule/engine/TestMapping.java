@@ -10,6 +10,8 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 import com.axonivy.utils.rule.engine.dmn.generator.BeanProperties;
+import com.axonivy.utils.rule.engine.dmn.generator.DmnType;
+import com.axonivy.utils.rule.engine.dmn.generator.JavaTypeMapper;
 import com.axonivy.utils.rule.engine.mapping.FieldLocator;
 import com.axonivy.utils.rule.engine.mapping.ValueConverter;
 import com.axonivy.utils.rule.engine.test.Customer;
@@ -28,6 +30,31 @@ import ch.ivyteam.ivy.scripting.objects.Time;
  */
 @IvyTest
 class TestMapping {
+
+  @Test
+  void ivyDataClass_isMappedToDmnTypes() {
+    var type = (DmnType.Structure) new JavaTypeMapper().toDmnType(TestData.class);
+    var fields = type.fields().stream().collect(java.util.stream.Collectors.toMap(f -> f.name(), f -> f.type()));
+
+    assertThat(fields.get("amount")).as("Ivy Number").isEqualTo(DmnType.NUMBER);
+    assertThat(fields.get("quantity")).as("Integer").isEqualTo(DmnType.NUMBER);
+    assertThat(fields.get("nextStep")).as("String").isEqualTo(DmnType.STRING);
+    assertThat(fields.get("approved")).as("Boolean").isEqualTo(DmnType.BOOLEAN);
+    assertThat(fields.get("orderDate")).as("Ivy Date").isEqualTo(DmnType.DATE);
+    assertThat(fields.get("orderedAt")).as("Ivy DateTime").isEqualTo(DmnType.DATE_TIME);
+    assertThat(fields.get("openingTime")).as("Ivy Time").isEqualTo(DmnType.TIME);
+    assertThat(fields.get("deliveryTime")).as("Ivy Duration").isEqualTo(DmnType.DAYS_TIME_DURATION);
+    assertThat(fields.get("labels")).as("Ivy List<String>").isEqualTo(new DmnType.Collection(DmnType.STRING));
+    assertThat(fields.get("upgrade")).as("enum").isInstanceOf(DmnType.Enumeration.class);
+    assertThat(((DmnType.Enumeration) fields.get("upgrade")).values()).containsExactly("GOLD", "SILVER", "STANDARD");
+
+    var customer = (DmnType.Structure) fields.get("customer");
+    assertThat(customer.name()).as("nested data class").isEqualTo("tCustomer");
+    assertThat(customer.fields()).extracting(f -> f.name())
+        .containsExactly("name", "segment", "age", "vip", "birthday", "lastContact", "tags", "address");
+    var positions = (DmnType.Collection) fields.get("positions");
+    assertThat(positions.element()).as("list of data classes").isInstanceOf(DmnType.Structure.class);
+  }
 
   @Test
   void dataClassProperties_areFoundInDeclarationOrder() {
