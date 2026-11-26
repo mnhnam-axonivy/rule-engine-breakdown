@@ -1,8 +1,10 @@
 /*
  * DMN editor page of the decision runtime: /editor/
  *
- * Shows a model of the runtime in the Apache KIE DMN editor (lib/dmn-editor.js) and saves it as a new version
- * (source PORTAL: a change by a person, which a project deployment never replaces), as draft or activated.
+ * Shows a model in the Apache KIE DMN editor (lib/dmn-editor.js) and saves it
+ *  - on the runtime, as a new version (source PORTAL: a change by a person, which a project deployment never
+ *    replaces), as draft or activated, or
+ *  - back to the .dmn file it was opened from, so the Ivy project keeps the change.
  * Talks only to the API of this runtime (../api/). Deep links: #<model> or #<model>/<version>.
  */
 (function () {
@@ -12,13 +14,14 @@
   const MODEL_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,199}$/;
   const KEY_STORE = 'ruleEngine.apiKey';
   const AUTHOR_STORE = 'ruleEngine.editor.author';
+  const DMN_TYPES = [{ description: 'DMN model', accept: { 'application/xml': ['.dmn'] } }];
   const $ = id => document.getElementById(id);
 
   const state = {
     models: [],
     selected: null, // the model whose versions are listed
     versions: [],
-    doc: null, // what the editor shows: { kind: 'runtime', model, version, status, source }
+    doc: null, // what the editor shows: { kind: 'runtime' | 'file' | 'new', model, version, status, source, fileName, fileHandle, savedAs }
     editor: null,
     ready: false, // the editor in its frame has started and answers
     dirty: false,
@@ -147,7 +150,7 @@
       hint.textContent = state.models.length
         ? 'The models the runtime holds. Select one to change its rules.'
         : 'The runtime holds no model yet. A Business Rule Task registers the .dmn file of its project when it '
-          + 'runs.';
+          + 'runs. You can also open a .dmn file or start a new model.';
     } catch (e) {
       state.models = [];
       hint.classList.add('error');
@@ -312,18 +315,24 @@
     const doc = state.doc;
     $('toolbar').hidden = !doc;
     if (!doc) return;
-    $('doc-kind').textContent = 'Runtime';
+    $('doc-kind').textContent = { runtime: 'Runtime', file: 'File', new: 'New model' }[doc.kind];
     const name = $('doc-model');
     if (document.activeElement !== name) name.value = doc.model || '';
     name.readOnly = doc.kind === 'runtime';
     $('doc-state').textContent = describe(doc) + (state.ready ? '' : ' · the editor is starting…');
     $('doc-dirty').hidden = !state.dirty;
-    ['undo', 'redo', 'check', 'save-draft', 'save-activate'].forEach(id => { $(id).disabled = state.busy || !state.ready; });
+    ['undo', 'redo', 'check', 'save-file', 'save-draft', 'save-activate'].forEach(id => { $(id).disabled = state.busy || !state.ready; });
+    $('save-file').textContent = doc.fileHandle ? 'Save file' : 'Save as file…';
   }
 
   function describe(doc) {
-    return 'version ' + doc.version + (doc.status ? ' · ' + doc.status.toLowerCase() : '')
-      + (doc.source ? ' · from ' + doc.source.toLowerCase() : '');
+    if (doc.kind === 'runtime') {
+      return 'version ' + doc.version + (doc.status ? ' · ' + doc.status.toLowerCase() : '')
+        + (doc.source ? ' · from ' + doc.source.toLowerCase() : '');
+    }
+    const saved = doc.savedAs ? 'saved on the runtime as version ' + doc.savedAs : '';
+    if (doc.kind === 'file') return [doc.fileName, saved].filter(Boolean).join(' · ');
+    return saved || 'not on the runtime yet';
   }
 
   function confirmDiscard() {
@@ -404,12 +413,130 @@
       }
       state.editor.markAsSaved();
       $('description').value = '';
-      Object.assign(doc, { kind: 'runtime', model, version: version.version, status: version.status, source: version.source });
-      setHash(model + '/' + version.version);
+      if (doc.kind === 'file') {
+        Object.assign(doc, { model, savedAs: version.version });
+        text += ' The file ' + doc.fileName + ' is unchanged: use "Save file" to keep the change in the project.';
+      } else {
+        Object.assign(doc, { kind: 'runtime', model, version: version.version, status: version.status, source: version.source });
+        setHash(model + '/' + version.version);
+      }
       state.selected = model;
       await refresh();
       say('ok', text, result.messages);
     });
+  }
+
+  async function saveFile() {
+    const doc = state.doc;
+    if (!doc || !state.editor) return;
+    const handle = doc.fileHandle;
+    // ask for write access first, while the click still counts as the user's action
+    if (handle && handle.requestPermission && (await handle.requestPermission({ mode: 'readwrite' })) !== 'granted') {
+      say('warn', 'Not saved: the browser was not allowed to write ' + doc.fileName + '.');
+      return;
+    }
+    await busy(async () => {
+      const xml = await state.editor.getContent();
+      const name = (doc.model || 'model') + '.dmn';
+      if (handle) {
+        await write(handle, xml);
+        state.editor.markAsSaved();
+        say('ok', 'Saved ' + doc.fileName + '. A Business Rule Task sends the changed file to the runtime with its next evaluation.');
+        return;
+      }
+      if (window.showSaveFilePicker) {
+        let target;
+        try {
+          target = await window.showSaveFilePicker({ suggestedName: name, types: DMN_TYPES });
+        } catch (e) {
+          if (e.name === 'AbortError') return;
+          throw e;
+        }
+        await write(target, xml);
+        if (doc.kind !== 'runtime') {
+          Object.assign(doc, { kind: 'file', fileHandle: target, fileName: target.name });
+          state.editor.markAsSaved();
+        }
+        say('ok', 'Saved as ' + target.name + '.');
+        return;
+      }
+      download(xml, name);
+      say('info', 'Downloaded ' + name + '. Put it into the dmn folder of the Ivy project to replace the file there.');
+    });
+  }
+
+  async function write(handle, text) {
+    const out = await handle.createWritable();
+    await out.write(text);
+    await out.close();
+  }
+
+  function download(text, name) {
+    const url = URL.createObjectURL(new Blob([text], { type: 'application/xml' }));
+    const link = el('a', { href: url, download: name });
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  // ── files and new models ────────────────────────────────────────────────────
+
+  async function openFile() {
+    if (!confirmDiscard()) return;
+    if (!window.showOpenFilePicker) {
+      const input = $('file-input');
+      input.value = '';
+      input.click();
+      return;
+    }
+    let handle;
+    try {
+      [handle] = await window.showOpenFilePicker({ types: DMN_TYPES });
+    } catch (e) {
+      if (e.name !== 'AbortError') say('error', e.message);
+      return;
+    }
+    const file = await handle.getFile();
+    openFromFile(await file.text(), file.name, handle);
+  }
+
+  async function openFromFile(xml, fileName, handle) {
+    const model = fileName.replace(/\.(dmn|xml)$/i, '');
+    openDocument(xml, { kind: 'file', model: MODEL_NAME.test(model) ? model : '', fileName, fileHandle: handle });
+    setHash('');
+    say('info', handle
+      ? 'Opened ' + fileName + '. "Save file" writes your changes back to it.'
+      : 'Opened ' + fileName + '. This browser cannot write to files: "Save as file…" downloads the changed file.');
+    if (state.models.some(m => m.name === model)) {
+      state.selected = model;
+      renderModels();
+      await loadVersions();
+    }
+  }
+
+  function askName() {
+    const dialog = $('name-dialog');
+    const input = $('name-input');
+    input.value = '';
+    return new Promise(resolve => {
+      dialog.addEventListener('close', () => resolve(dialog.returnValue === 'ok' ? input.value.trim() : ''), { once: true });
+      dialog.showModal();
+    });
+  }
+
+  async function newModel() {
+    if (!confirmDiscard()) return;
+    const name = await askName();
+    if (!name) return;
+    if (state.models.some(m => m.name === name)) {
+      say('warn', 'The runtime has a model "' + name + '" already. Select it on the left to change it.');
+      return;
+    }
+    openDocument('', { kind: 'new', model: name });
+    setHash('');
+    say('info', 'An empty model. Add a decision and its inputs with the palette on the left of the editor, '
+      + 'then "Save and activate".');
   }
 
   // ── start ───────────────────────────────────────────────────────────────────
@@ -434,12 +561,20 @@
         quiet(); // the warning that asked for the name
       }
     });
+    $('doc-model').addEventListener('input', event => { if (state.doc && state.doc.kind !== 'runtime') state.doc.model = event.target.value.trim(); });
     $('undo').addEventListener('click', () => state.editor && state.editor.undo());
     $('redo').addEventListener('click', () => state.editor && state.editor.redo());
     $('check').addEventListener('click', check);
+    $('save-file').addEventListener('click', saveFile);
     $('save-draft').addEventListener('click', () => saveToRuntime(false));
     $('save-activate').addEventListener('click', () => saveToRuntime(true));
     $('rollback').addEventListener('click', rollback);
+    $('open-file').addEventListener('click', openFile);
+    $('new-model').addEventListener('click', newModel);
+    $('file-input').addEventListener('change', async event => {
+      const file = event.target.files[0];
+      if (file) await openFromFile(await file.text(), file.name, null);
+    });
     window.addEventListener('message', event => {
       const frame = $('editor').querySelector('iframe');
       if (frame && event.source === frame.contentWindow && event.data && event.data.type === 'kogitoEditor_ready') markReady();
@@ -457,7 +592,7 @@
       await selectModel(wanted.model, { open: true, version: wanted.version });
     } else if (state.models.length || !$('runtime-hint').classList.contains('error')) {
       say('warn', 'The runtime has no model "' + wanted.model + '" yet. A Business Rule Task registers it with its '
-        + 'first evaluation.');
+        + 'first evaluation. You can also open its .dmn file with "Open .dmn file…".');
     }
   }
 
