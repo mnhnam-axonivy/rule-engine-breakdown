@@ -5691,3 +5691,47 @@ body.edit-mode {
 .rule-runtime-state.bad::before {
   background: var(--ivy-tertinary-color-red-medium);
 }
+
+.rule-table .rule-file,
+.rule-muted {
+  color: var(--ivy-primary-color-grey-medium);
+  font-size: var(--small-font-size, 0.875rem);
+}
+
+.rule-table .rule-file .ti {
+  margin-right: 0.25rem;
+}
+
+.rule-table .rule-actions-column,
+.rule-versions-table .rule-actions-column {
+  width: 7rem;
+  white-space: nowrap;
+}
+
+.rule-table .rule-count-column {
+  width: 7rem;
+}
+
+.rule-badge {
+  display: inline-block;
+  padding: 0.1rem 0.55rem;
+  border-radius: 1rem;
+  font-size: var(--small-font-size, 0.875rem);
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+  background: var(--ivy-primary-color-grey-pale);
+  color: var(--ivy-primary-color-grey-dark);
+}
+
+.rule-badge-active {
+  background: var(--ivy-tertinary-color-green-light);
+  color: hsl(164, 59%, 22%);
+}
+
+.rule-badge-new,
+.rule-badge-draft,
+.rule-badge-approved {
+  background: var(--ivy-tertinary-color-orange-light);
+  color: hsl(27, 80%, 32%);
+}

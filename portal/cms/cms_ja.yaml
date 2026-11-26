@@ -766,13 +766,22 @@ ch.ivy.addon.portalkit.ui.jsf:
       UserAssignment: ユーザーの割り当て
       UserSelectionLabel: このロールに追加するユーザーを検索
     RuleManagement:
+      ActiveVersion: "有効なバージョン"
+      Decisions: "デシジョン"
       Description: "Axon Ivy Rules Engine のビジネスルール（DMN デシジョンテーブル）です。保存するたびにディシジョンランタイムに新しいバージョンが作成されます。ここで保存したバージョンがデプロイによって置き換えられることはありません。"
+      FileOfProject: "{1} プロジェクトの {0}"
       Messages:
         NotConfigured: "ディシジョンランタイムが設定されていません。変数 RuleEngine.Url を設定してください。"
         Unreachable: "{0} のディシジョンランタイムが応答しません。ルールの読み込みも保存もできません。"
+      NoActiveVersion: "有効なバージョンなし"
+      NoRules: "ルールが見つかりません。ルールとは、プロジェクトの .dmn ファイル、またはディシジョンランタイムのモデルです。"
+      NotOnRuntime: "ランタイム未登録"
       Refresh: "更新"
+      Rule: "ルール"
       RuntimeConnected: "ディシジョンランタイム: {0}"
       TitlePage: "ルール管理"
+      VersionLabel: "バージョン {0}"
+      Versions: "バージョン数"
     SecurityMemberDisplayName:
       filterByUsername: ユーザー名でフィルタリング
       filterToSee: さらに表示するにはフィルタリング
