@@ -1,17 +1,23 @@
-# Implementation breakdown
+# Implementation plan
 
-This document splits the Axon Ivy Rules Engine into features that developers can build in parallel. Each feature
-is split into stories, and each story into small pull requests. It follows the code of this repository: every PR
-names the files where the proof of concept already does what the PR asks for.
+This document splits the Axon Ivy Rules Engine into features that two developers can build in parallel. Each
+feature is split into stories, and each story into small pull requests. It follows the code of this repository:
+every PR names the files where the proof of concept already does what the PR asks for.
 
 Out of scope: the tutorial (`rule-engine-doc`) and its walkthrough builder
 (`rule-engine-doc/internal/interactive_app_builder`).
 
 ## How to read it
 
-- **Feature**: a workstream with its own module or package. One developer, or a pair, owns it.
+- **Feature**: a workstream with its own module or package.
 - **Story**: a capability that users or other features can rely on once its PRs are merged.
 - **PR**: one reviewable step. It builds, brings its own tests and leaves `mvn verify` green.
+- **Name of a PR**: its prefix says who builds it, its number the order within that prefix.
+  - **F**: the foundation. It comes first; F3, the Portal import, needs no work.
+  - **A**: Developer A, the decision runtime, its editor page, the DMN generator, the Portal tab and the tests
+    against the container.
+  - **B**: Developer B, the client of the runtime, the Business Rule Task, New DMN, the Rule Management bridge, the
+    demo and the Market product.
 
 Each PR lists its **scope**, its **outcome**, its **acceptance criteria**, what it **depends on**, and a
 **reference**: where the proof of concept has it.
@@ -20,126 +26,140 @@ Each PR lists its **scope**, its **outcome**, its **acceptance criteria**, what 
 
 - `mvn verify` stays green. Tests come in the same PR as the code they test.
 - A PR that changes the build, a command or a design decision updates the root `README.md`. The user documentation,
-  `rule-engine-product/README.md`, is written in PR 9.1, from the features as they are by then.
-- Contracts change first, in a PR of their own, so that teams on both sides work against them without waiting for
-  each other:
-  - the API records of `rule-engine-core` and `rule-engine-runtime/openapi.yaml` (PR 0.2);
-  - the callable signatures of the Portal bridge (PR 6.1, signatures listed there).
-- The connector is tested against `MockRuntime` (PR 3.2), never the real runtime. Tests against the container come
-  only in F9.
+  `rule-engine-product/README.md`, is written in PR B18, from the features as they are by then.
+- Contracts change first, in a PR of their own, so that both developers work against them without waiting for each
+  other:
+  - the API records of the runtime and of the connector, and `rule-engine/runtime/openapi.yaml` (PR F2). A PR that
+    changes a record changes both sides; `ContractTest` fails if it does not;
+  - the callable signatures of the Portal bridge (PR B12, signatures listed there).
+- The packages `api` and `dmn.generator` of the connector are plain Java 21 without the Ivy API, because the tests of
+  the runtime compile them.
+- The connector is tested against `MockRuntime` (PR B2), never the real runtime. Tests against the container come
+  only in A19 and A20.
 - Several features touch the same files: `MockRuntime.java`, `rule-engine-test/process/RuleTest.p.json` and the two
   READMEs. In those, add new parts; do not reorder or reformat what is there, so that merges stay trivial.
 
 ## Features
 
-| ID | Feature | Module | Stories | PRs | Needs first |
-| --- | --- | --- | --- | --- | --- |
-| F0 | Foundation and contract | root, `rule-engine-core` | 2 | 2 | none |
-| F1 | Decision runtime | `rule-engine-runtime` | 5 | 9 | F0 |
-| F2 | DMN editor page of the runtime | `rule-engine-runtime` (`/editor/`), `internal/editor-smoke` | 2 | 4 | F0, and 1.6 and 1.7 for PR 2.2 |
-| F3 | Client of the runtime | `rule-engine` (`client`) | 2 | 2 | F0 |
-| F4 | Business Rule Task | `rule-engine` | 5 | 7 | F0, and 3.2 for PR 4.4 |
-| F5 | New DMN from process data | `rule-engine-core` (`dmn.generator`), `rule-engine` | 2 | 3 | 1.1, and 4.4 for PR 5.2 |
-| F6 | Rule Management bridge | `rule-engine` (`portal`, `process/Portal`) | 2 | 3 | 3.2 and 4.1, and 2.1 for PR 6.3 |
-| F7 | Rule Management tab in the Portal | `portal`, `portal-components` | 4 | 5 | none for 7.1; the signatures of 6.1 for 7.2 |
-| F8 | Demo | `rule-engine-demo` | 2 | 3 | 4.4 |
-| F9 | Delivery | `rule-engine-product`, `rule-engine-test` | 2 | 3 | 1.8, and the features it ships |
+| Feature | Module | Stories | PRs | Needs first |
+| --- | --- | --- | --- | --- |
+| Foundation and contract | root, `rule-engine`, `rule-engine/runtime` | 2 | F1, F2 | nothing |
+| Decision runtime | `rule-engine/runtime` | 5 | A1 to A9 | the foundation |
+| DMN editor page of the runtime | `rule-engine/runtime` (`/editor/`), `internal/editor-smoke` | 2 | A10 to A13 | A8 for A10, and A6 for A11 |
+| Client of the runtime | `rule-engine` (`client`) | 2 | B1, B2 | the foundation |
+| Business Rule Task | `rule-engine` | 5 | B3 to B9 | B2 |
+| New DMN from process data | `rule-engine` (`dmn.generator`, `program.internal`) | 2 | A14, B10, B11 | A1 and B4 for A14, and B6 for B10 |
+| Rule Management bridge | `rule-engine` (`portal`, `process/Portal`) | 2 | B12 to B14 | B3, and A10 for B14 |
+| Rule Management tab in the Portal | `portal`, `portal-components` | 4 | F3, A15 to A18 | nothing for F3; the signatures of B12 for A15 |
+| Demo | `rule-engine-demo` | 2 | B15 to B17 | B7 and B12 |
+| Delivery | `rule-engine-product`, `rule-engine-test` | 2 | B18, A19, A20 | A8, and the features it ships |
 
 ```mermaid
 flowchart LR
-  F0[F0 Foundation and contract]
-  F1[F1 Decision runtime]
-  F2[F2 Editor page]
-  F3[F3 Runtime client]
-  F4[F4 Business Rule Task]
-  F5[F5 New DMN]
-  F6[F6 Portal bridge]
-  F7[F7 Portal tab]
-  F8[F8 Demo]
-  F9[F9 Delivery]
-  F0 --> F1 & F2 & F3 & F4
-  F1 -- "1.1 compiler" --> F5
-  F1 -- "1.6, 1.7 API" --> F2
-  F1 -- "1.8 image" --> F9
-  F3 -- "3.2 client" --> F4
-  F3 -- "3.2 client" --> F6
-  F4 -- "4.4 evaluation" --> F5
-  F4 -- "4.1 DMN files" --> F6
-  F4 -- "4.4 evaluation" --> F8
-  F2 -- "2.1 editor script" --> F6
-  F6 -- "6.1 signatures" --> F7
-  F8 --> F9
+  foundation[Foundation and contract]
+  runtime[Decision runtime]
+  editor[Editor page]
+  client[Runtime client]
+  task[Business Rule Task]
+  newdmn[New DMN]
+  bridge[Portal bridge]
+  portal[Portal tab]
+  demo[Demo]
+  delivery[Delivery]
+  foundation --> runtime & editor & client & task
+  runtime -- "A1 compiler" --> newdmn
+  runtime -- "A6 to A8 API, image" --> editor
+  runtime -- "A8 image" --> delivery
+  client -- "B2 client" --> task
+  client -- "B2 client" --> bridge
+  task -- "B4 mapping, B6 evaluation" --> newdmn
+  task -- "B3 DMN files" --> bridge
+  task -- "B6 evaluation" --> demo
+  editor -- "A10 editor script" --> bridge
+  bridge -- "B12 signatures" --> portal
+  bridge -- "B12" --> demo
+  demo --> delivery
 ```
 
 ## Parallel plan
 
-Five tracks, one developer each. With three developers, merge tracks A and E, and tracks B and C.
+Two developers, one for each prefix. The foundation comes first: F1, then F2. F3 is the Portal import and needs no
+work.
 
-| Track | PRs, in order | Starts after |
+| Developer | PRs, in order | Starts after |
 | --- | --- | --- |
-| A Runtime | 1.1 and 1.2 → 1.3 → 1.4 → 1.5 → 1.6 → 1.7 → 1.9 | 0.2 |
-| B Client and Business Rule Task | 3.1 → 3.2 → 4.3 → 4.4 → 4.5 → 4.6 → 4.7 | 0.1 |
-| C Mapping, generator, demo | 4.1 and 4.2 → 5.1 → 5.2 → 5.3 → 8.1 → 8.2 → 8.3 | 0.2 |
-| D Portal | 7.1 → 7.2 (against a stub) → 6.1 → 6.2 → 6.3 → 7.3 → 7.4 → 7.5 | 0.1 |
-| E Editor page and delivery | 2.1 → 1.8 → 2.2 → 2.3 and 2.4 → 9.2 → 9.1 → 9.3 | 0.1 |
+| A | A1 → A2 → A3 → A4 → A5 → A6 → A7 → A8 → A9 → A10 → A11 → A12 → A13 → A14 → A15 → A16 → A17 → A18 → A19 → A20 | F2 |
+| B | B1 → B2 → B3 and B4 → B5 → B6 → B7 → B8 and B9 → B10 → B11 → B12 → B13 → B14 → B15 → B16 → B17 → B18 | F1 for B1, F2 for B2 |
 
-The longest chains are 0.1 → 0.2 → 3.2 → 4.4 → 4.5 → 4.6 → 9.3 on the connector side, and
-0.2 → 1.2 → 1.3 → 1.4 → 1.5 → 1.7 → 1.8 → 9.2 → 9.3 on the runtime side. Review the PRs on these chains first.
+Where one developer needs a PR of the other:
+
+| PR | Needs | Why |
+| --- | --- | --- |
+| A14 DMN generator | B4 | a test of the mapping maps an Ivy data class to DMN types |
+| A15 Detect the rule engine and show the tab | B12 | the signatures of the bridge; until B12 is merged, a stub callable with the same signatures |
+| A17 Edit a model in the Portal | B13, B14 | saving and activating, and the editor script served by the engine |
+| A19 Container test harness | B15 | the tests run the demo process |
+| A20 End-to-end scenarios | B8, B17 | the inputs of the active version, and the table that decided |
+| B10 New DMN when the element runs | A14 | the generator |
+| B14 Editor script served by the engine | A10 | the script comes from the editor bundle of the runtime |
+
+The longest chain is F1 → F2 → A1 → A2 → A3 → A4 → A5 → A7 → A8 → A10 → B14 → A17 → A18.
+Review the PRs on it first.
 
 ### Milestones
 
 | Milestone | What works | PRs |
 | --- | --- | --- |
-| M1 A decision evaluates | A process with a Business Rule Task evaluates a `.dmn` file of its project on a runtime in dev mode. | F0, 1.1 to 1.5, F3, 4.1 to 4.4 |
-| M2 Rules change without deployment | Versions, activation, rollback, the container image, the editor page, auto-deploy, the Java API. | 1.6 to 1.8, 2.1 to 2.3, 4.5 to 4.7 |
-| M3 Rule owners in the Portal | The tab Rule Management: list, edit, save, activate, roll back. | F6, F7 |
-| M4 Ready to ship | New DMN, the demo, the product, the tests against the container, the performance baseline. | F5, F8, F9, 1.9, 2.4 |
+| M1 A decision evaluates | A process with a Business Rule Task evaluates a `.dmn` file of its project on a runtime in dev mode. | F1, F2, A1 to A5, B1 to B6 |
+| M2 Rules change without deployment | Versions, activation, rollback, the container image, the editor page, auto-deploy, the Java API. | A6 to A8, A10 to A12, B7 to B9 |
+| M3 Rule owners in the Portal | The tab Rule Management: list, edit, save, activate, roll back. | B12 to B14, F3, A15 to A18 |
+| M4 Ready to ship | New DMN, the demo, the product, the tests against the container, the performance baseline. | A9, A13, A14, B10, B11, B15 to B18, A19, A20 |
 
 ### All PRs at a glance
 
-| PR | Title | Depends on | Track | Branch |
+| PR | Title | Depends on | Developer | Branch |
 | --- | --- | --- | --- | --- |
-| 0.1 | Maven reactor and empty modules | none | lead | `01.maven.init` |
-| 0.2 | API records and OpenAPI contract | 0.1 | lead | `02.core.api-contract` |
-| 1.1 | DMN compiler and evaluator | 0.2 | A | `03.runtime.dmn-compiler` |
-| 1.2 | Version store and schema | 0.2 | A | `04.runtime.version-store` |
-| 1.3 | Version life cycle | 1.2 | A | `05.runtime.version-lifecycle` |
-| 1.4 | Model registry and version service | 1.1, 1.3 | A | `06.runtime.model-registry` |
-| 1.5 | REST API: load, read and evaluate | 1.4 | A | `07.runtime.rest-api` |
-| 1.6 | REST API: life cycle of versions | 1.5 | A | `08.runtime.version-api` |
-| 1.7 | API key, health and start page | 1.5 | A | `09.runtime.api-key` |
-| 1.8 | Container image and Docker Compose | 1.7 | E | `10.runtime.docker` |
-| 1.9 | Performance baseline | 1.5 | A | `11.runtime.performance` |
-| 2.1 | Bundle the KIE DMN editor | 0.1 | E | `12.editor.bundle` |
-| 2.2 | Editor page: open, check and save a model | 2.1, 1.6, 1.7 | E | `13.editor.page` |
-| 2.3 | Editor page: versions | 2.2 | E | `14.editor.versions` |
-| 2.4 | Editor page: project files and new models | 2.2 | E | `15.editor.files` |
-| 3.1 | HTTP transport | 0.1 | B | `16.client.transport` |
-| 3.2 | Typed client, configuration and mock runtime | 0.2, 3.1 | B | `17.client.typed` |
-| 4.1 | DMN files of a project | 0.1 | C | `18.connector.dmn-files` |
-| 4.2 | Mapping by name | 0.2 | C | `19.connector.mapping` |
-| 4.3 | Program element and inscription mask | 4.1 | B | `20.connector.element` |
-| 4.4 | Evaluate the decision | 3.2, 4.2, 4.3 | B | `21.connector.evaluate` |
-| 4.5 | Register the DMN files as versions | 4.4 | B | `22.connector.auto-deploy` |
-| 4.6 | Inputs of the version that answers | 4.5 | B | `23.connector.active-inputs` |
-| 4.7 | Java API `RuleEngine` | 3.2, 4.5 | B | `24.connector.java-api` |
-| 5.1 | DMN generator | 0.2, 1.1 | C | `25.generator.dmn` |
-| 5.2 | New DMN when the element runs | 5.1, 4.4 | C | `26.newdmn.runtime` |
-| 5.3 | New DMN in the Designer | 5.2 | C | `27.newdmn.designer` |
-| 6.1 | Bridge: read rules | 3.2, 4.1 | D | `28.bridge.read` |
-| 6.2 | Bridge: change rules | 6.1 | D | `29.bridge.write` |
-| 6.3 | Editor script served by the engine | 2.1, 6.1 | D | `30.bridge.editor-script` |
-| 7.1 | Import Portal 14.0.1 unchanged | none | D | `31.portal.import` |
-| 7.2 | Detect the rule engine and show the tab | 7.1, signatures of 6.1 | D | `32.portal.detect` |
-| 7.3 | The table of rules | 7.2, 6.1 | D | `33.portal.rules-table` |
-| 7.4 | Edit a model in the Portal | 7.3, 6.2, 6.3 | D | `34.portal.edit` |
-| 7.5 | Versions of a model in the Portal | 7.4 | D | `35.portal.versions` |
-| 8.1 | Invoice pricing process | 4.4 | C | `36.demo.process` |
-| 8.2 | Demo dialog | 8.1 | C | `37.demo.dialog` |
-| 8.3 | Show the table that decided | 8.2, 4.7 | C | `38.demo.rules-table` |
-| 9.1 | Market product | 8.2 | E | `39.product.market` |
-| 9.2 | Container test harness | 1.8, 4.5 | E | `40.test.container-harness` |
-| 9.3 | End-to-end scenarios | 9.2, 4.6, 4.7, 5.1, 8.1 | E | `41.test.end-to-end` |
+| F1 | Maven reactor and empty modules | none | foundation | `01.maven.init` |
+| F2 | API records and OpenAPI contract | F1 | foundation | `02.core.api-contract` |
+| A1 | DMN compiler and evaluator | F2 | A | `03.runtime.dmn-compiler` |
+| A2 | Version store and schema | A1 | A | `04.runtime.version-store` |
+| A3 | Version life cycle | A2 | A | `05.runtime.version-lifecycle` |
+| A4 | Model registry and version service | A3 | A | `06.runtime.model-registry` |
+| A5 | REST API: load, read and evaluate | A4 | A | `07.runtime.rest-api` |
+| A6 | REST API: life cycle of versions | A5 | A | `08.runtime.version-api` |
+| A7 | API key, health and start page | A5 | A | `09.runtime.api-key` |
+| A8 | Container image and Docker Compose | A7 | A | `10.runtime.docker` |
+| A9 | Performance baseline | A5 | A | `11.runtime.performance` |
+| A10 | Bundle the KIE DMN editor | A8 | A | `12.editor.bundle` |
+| A11 | Editor page: open, check and save a model | A6, A10 | A | `13.editor.page` |
+| A12 | Editor page: versions | A11 | A | `14.editor.versions` |
+| A13 | Editor page: project files and new models | A11 | A | `15.editor.files` |
+| B1 | HTTP transport | F1 | B | `16.client.transport` |
+| B2 | Typed client, configuration and mock runtime | F2, B1 | B | `17.client.typed` |
+| B3 | DMN files of a project | B2 | B | `18.connector.dmn-files` |
+| B4 | Mapping by name | F2 | B | `19.connector.mapping` |
+| B5 | Program element and inscription mask | B3 | B | `20.connector.element` |
+| B6 | Evaluate the decision | B4, B5 | B | `21.connector.evaluate` |
+| B7 | Register the DMN files as versions | B6 | B | `22.connector.auto-deploy` |
+| B8 | Inputs of the version that answers | B7 | B | `23.connector.active-inputs` |
+| B9 | Java API RuleEngine | B7 | B | `24.connector.java-api` |
+| A14 | DMN generator | A1, B4 | A | `25.generator.dmn` |
+| B10 | New DMN when the element runs | B6, A14 | B | `26.newdmn.runtime` |
+| B11 | New DMN in the Designer | B10 | B | `27.newdmn.designer` |
+| B12 | Bridge: read rules | B3 | B | `28.bridge.read` |
+| B13 | Bridge: change rules | B12 | B | `29.bridge.write` |
+| B14 | Editor script served by the engine | A10, B12 | B | `30.bridge.editor-script` |
+| F3 | Import Portal 14.0.1 unchanged | none | nobody | `31.portal.import` |
+| A15 | Detect the rule engine and show the tab | B12, F3 | A | `32.portal.detect` |
+| A16 | The table of rules | A15 | A | `33.portal.rules-table` |
+| A17 | Edit a model in the Portal | B13, B14, A16 | A | `34.portal.edit` |
+| A18 | Versions of a model in the Portal | A17 | A | `35.portal.versions` |
+| B15 | Invoice pricing process | B7, B12 | B | `36.demo.process` |
+| B16 | Demo dialog | B15 | B | `37.demo.dialog` |
+| B17 | Show the table that decided | B9, B16 | B | `38.demo.rules-table` |
+| B18 | Market product | B16 | B | `39.product.market` |
+| A19 | Container test harness | A8, B15 | A | `40.test.container-harness` |
+| A20 | End-to-end scenarios | B8, A14, B17, A19 | A | `41.test.end-to-end` |
 
 ### Branches
 
@@ -147,73 +167,88 @@ Each PR has a branch `NN.area.topic`, where `NN` is its place in the merge order
 branches are stacked: each one starts from the branch before it, and its PR targets that branch, so a PR shows only its
 own change. Merge them in order; when a branch is merged and deleted, GitHub moves the next PR onto `main`.
 
-The tracks still work in parallel: a developer opens the next PR of a track on top of the latest branch it depends on.
+The name of a PR says who builds it, the number of its branch where it is in the stack. The developers still work in
+parallel: each opens the next PR on top of the latest branch it depends on.
 
 ---
 
-## F0 Foundation and contract
+## Foundation and contract
 
-One developer does F0 before the tracks start. It is small on purpose: everything after it builds on it.
+The foundation comes before the work of the two developers. It is small on purpose: everything after it
+builds on it.
 
-### Story 0.A The build exists
+### Story: The build exists
 
-#### PR 0.1 Maven reactor and empty modules
+#### F1 Maven reactor and empty modules
 
 - **Scope**
-  - The root `pom.xml` with the modules `rule-engine-core`, `rule-engine-runtime`, `rule-engine`, `rule-engine-demo`
-    and `rule-engine-test`, all empty but buildable. Maven deploy is skipped. `rule-engine-product` joins in PR 9.1.
-  - `rule-engine-core` is an Ivy project with plain Java and no use of the Ivy API.
-  - `rule-engine-runtime` is a Quarkus application. It adds `../rule-engine-core/src` as a source folder
-    (build-helper) and compiles it with Java 21, so the image needs no Ivy tooling.
+  - The root `pom.xml` with the modules `rule-engine`, `rule-engine/runtime`, `rule-engine-demo` and
+    `rule-engine-test`, all empty but buildable. Maven deploy is skipped. `rule-engine-product` joins in PR B18.
+  - `rule-engine` is the Ivy connector. Its iar leaves out the folder `runtime` (`iarExcludes`).
+  - `rule-engine/runtime` is a Quarkus application on Java 21. It lies in the folder of the connector, but shares no
+    code with it, only JSON, so the image needs no Ivy tooling.
+  - Only the tests of the runtime compile code of the connector: build-helper adds `../src` as a test source folder,
+    and the `testIncludes` of the compiler limit it to the packages `api` and `dmn.generator`.
   - `application.properties` with port 8080, and 8090 in dev mode.
 - **Outcome**: all modules build together; the runtime starts in dev mode.
 - **Acceptance**
   - `mvn verify` passes from the root.
-  - `mvn quarkus:dev -f rule-engine-runtime` answers `http://localhost:8090/q/health`.
-  - A class in `rule-engine-core` that imports `ch.ivyteam.*` breaks the runtime build. Try it once in review.
+  - `mvn quarkus:dev -f rule-engine/runtime` answers `http://localhost:8090/q/health`.
+  - The iar of `rule-engine` contains no file of `runtime`.
+  - Try both once in review:
+    - the main code of the runtime does not compile if it uses a class of the connector;
+    - a class in `api` or `dmn.generator` that imports `ch.ivyteam.ivy.environment.Ivy` breaks the tests of the runtime.
 - **Depends on**: nothing.
-- **Reference**: `pom.xml`, `rule-engine-core/pom.xml`, `rule-engine-runtime/pom.xml`, the root `README.md`
-  (decision "One shared core, two deployables").
+- **Reference**: `pom.xml`, `rule-engine/pom.xml`, `rule-engine/runtime/pom.xml`, the root `README.md` (decision "One
+  project, two deployables").
 
-### Story 0.B Runtime and connector speak one contract
+### Story: Runtime and connector speak one contract
 
-#### PR 0.2 API records and OpenAPI contract
+#### F2 API records and OpenAPI contract
 
 - **Scope**
-  - The records of `com.axonivy.utils.rule.engine.api`:
-    - requests: `EvaluateRequest` (with builder), `RegisterVersionRequest`, `ActivateRequest`, `ValidateRequest`;
+  - The records of the runtime, `com.axonivy.utils.rule.engine.runtime.api.model`, with OpenAPI annotations:
+    - requests: `EvaluateRequest`, `RegisterVersionRequest`, `ActivateRequest`, `ValidateRequest`;
     - answers: `EvaluateResponse` (model, version, decision, result, results), `ModelInfo` (decisions with their
       required inputs, inputs), `ModelVersion`, `ValidationResult`;
     - `Message`, and `ErrorResponse` (code, message, details);
     - the enums `VersionSource` (PROJECT, PORTAL, API) and `VersionStatus` (DRAFT, APPROVED, ACTIVE, RETIRED).
-  - OpenAPI annotations, compile-only in Ivy.
-  - `FeelNames` and `BeanProperties`: the naming rules and the reading of data class properties that the mapping
-    (4.2) and the generator (5.1) share. They are in this PR so that both can start at once.
-  - `rule-engine-runtime/openapi.yaml`: the 14 operations under `/api` and the error codes INVALID_REQUEST,
+  - The records of the connector, `com.axonivy.utils.rule.engine.api`: the same fields, with Javadoc instead of OpenAPI
+    annotations, and with builders for `EvaluateRequest` and `RegisterVersionRequest`. There is no `ValidateRequest`:
+    the client sends that one field without a record.
+  - `ContractTest` in the runtime: the records of both sides have the same fields with the same types, and the enums
+    the same constants. It does not compare JSON annotations such as `@JsonInclude`.
+  - `FeelNames` and `BeanProperties`, in the package `dmn.generator` of the connector: the naming rules and the
+    reading of data class properties that the mapping (B4) and the generator (A14) share. They are in this PR so that
+    both can start at once.
+  - `rule-engine/runtime/openapi.yaml`: the 14 operations under `/api` and the error codes INVALID_REQUEST,
     INVALID_MODEL, UNAUTHORIZED, MODEL_NOT_FOUND, VERSION_NOT_FOUND, DECISION_NOT_FOUND, NO_ACTIVE_VERSION,
     INVALID_STATE, EVALUATION_FAILED and INTERNAL_ERROR.
-- **Outcome**: the runtime and the connector are written against the same classes, so they cannot drift apart.
+- **Outcome**: the runtime and the connector are written against one contract, each with records of its own. A
+  difference between them fails the build.
 - **Acceptance**
-  - Every record turns into the JSON that `openapi.yaml` describes and back again (unit tests in the runtime module,
-    which compiles the core).
+  - The records of both sides turn into the JSON that `openapi.yaml` describes and back again (unit tests in the
+    runtime module, whose tests compile the records of the connector too).
+  - Renaming a field, or adding an enum constant, on one side only makes `ContractTest` fail. Try it once in review.
   - `FeelNames` has unit tests:
     - names reserved in FEEL are renamed;
     - names of built-in functions keep their name;
     - `Risk Level` finds `riskLevel`.
-- **Depends on**: 0.1.
-- **Reference**: `rule-engine-core/src/com/axonivy/utils/rule/engine/api/`,
-  `rule-engine-core/src/.../dmn/generator/FeelNames.java`, `rule-engine-runtime/openapi.yaml`.
+- **Depends on**: F1.
+- **Reference**: `rule-engine/runtime/src/main/java/.../runtime/api/model/`,
+  `rule-engine/src/com/axonivy/utils/rule/engine/api/`, `rule-engine/src/.../dmn/generator/FeelNames.java`,
+  `ContractTest.java`, `rule-engine/runtime/openapi.yaml`.
 
 ---
 
-## F1 Decision runtime
+## Decision runtime
 
 A Quarkus service that loads DMN models at runtime, keeps all their versions and evaluates decisions. Based on
 `kie-dmn-core` of Apache KIE 10.2.0, interpreted: no code generation, no KieContainer, no restart.
 
-### Story 1.A A DMN model loaded at runtime can be evaluated
+### Story: A DMN model loaded at runtime can be evaluated
 
-#### PR 1.1 DMN compiler and evaluator
+#### A1 DMN compiler and evaluator
 
 - **Scope**
   - `DmnCompiler`:
@@ -232,12 +267,12 @@ A Quarkus service that loads DMN models at runtime, keeps all their versions and
     - a valid model evaluates a named decision and the whole model;
     - empty content, a file that is not DMN, and a model with errors each give readable messages;
     - an enum value outside its allowed values fails while type-check is on.
-- **Depends on**: 0.2.
-- **Reference**: `rule-engine-runtime/src/main/java/.../runtime/dmn/`.
+- **Depends on**: F2.
+- **Reference**: `rule-engine/runtime/src/main/java/.../runtime/dmn/`.
 
-### Story 1.B Versions are stored and follow a life cycle
+### Story: Versions are stored and follow a life cycle
 
-#### PR 1.2 Version store and schema
+#### A2 Version store and schema
 
 - **Scope**
   - Flyway migration `V1__model_versions.sql`, and `ModelVersionEntity` (Panache) with its queries.
@@ -251,13 +286,13 @@ A Quarkus service that loads DMN models at runtime, keeps all their versions and
   - The same file with CRLF and with LF line endings gives one version.
   - Version numbers count up per model.
   - With the file database, versions are still there after a restart.
-- **Depends on**: 0.2.
+- **Depends on**: A1: the tests use its `TestModels`.
 - **Reference**: `.../runtime/store/ModelVersionEntity.java`, `.../runtime/service/VersionStore.java`,
   `src/main/resources/db/migration/`.
 - **Review note**: versions are stored in the runtime container, not in the system database of the Ivy Engine as
   MARP-4895 describes. Keep it that way, or decide otherwise before this PR.
 
-#### PR 1.3 Version life cycle
+#### A3 Version life cycle
 
 - **Scope**
   - The statuses draft, approved, active and retired, with exactly one active version per model.
@@ -278,12 +313,12 @@ A Quarkus service that loads DMN models at runtime, keeps all their versions and
     Portal".
   - Rolling back the first active version answers INVALID_STATE.
   - Retiring the active version answers INVALID_STATE.
-- **Depends on**: 1.2.
+- **Depends on**: A2.
 - **Reference**: `VersionStore.java` (`shouldActivate`, `activate`, `rollback`).
 
-### Story 1.C The active versions answer at once
+### Story: The active versions answer at once
 
-#### PR 1.4 Model registry and version service
+#### A4 Model registry and version service
 
 - **Scope**
   - `ModelRegistry`:
@@ -304,12 +339,12 @@ A Quarkus service that loads DMN models at runtime, keeps all their versions and
   - A version with an effective date two seconds ahead goes live after the next sync (1 s in the test profile).
   - A stored version that does not compile answers INTERNAL_ERROR with the reason; other models still work.
   - An unknown decision answers DECISION_NOT_FOUND with the decisions the model has.
-- **Depends on**: 1.1, 1.3.
+- **Depends on**: A3.
 - **Reference**: `.../runtime/service/ModelRegistry.java`, `VersionService.java`, `RuleEngineException.java`.
 
-### Story 1.D The runtime has a REST API
+### Story: The runtime has a REST API
 
-#### PR 1.5 REST API: load, read and evaluate
+#### A5 REST API: load, read and evaluate
 
 - **Scope**
   - Endpoints:
@@ -330,11 +365,11 @@ A Quarkus service that loads DMN models at runtime, keeps all their versions and
     - an invalid DMN is rejected with a readable message;
     - a missing input fails the evaluation.
   - The generated OpenAPI document matches `openapi.yaml` for these operations.
-- **Depends on**: 1.4.
+- **Depends on**: A4.
 - **Reference**: `.../runtime/api/ModelsResource.java`, `ValidationResource.java`, `ErrorMappers.java`,
   `ModelsApiTest.java`.
 
-#### PR 1.6 REST API: life cycle of versions
+#### A6 REST API: life cycle of versions
 
 - **Scope**: `POST .../versions/{version}/approve`, `.../activate` (now or with `effectiveDate`), `.../retire`,
   `POST /api/models/{model}/rollback`, `DELETE /api/models/{model}`, and `POST .../versions/{version}/evaluate`
@@ -349,12 +384,12 @@ A Quarkus service that loads DMN models at runtime, keeps all their versions and
       Portal.
   - A draft can be evaluated before it is active.
   - Delete removes the model from memory too.
-- **Depends on**: 1.5.
+- **Depends on**: A5.
 - **Reference**: `ModelsResource.java`, `ModelsApiTest.java`.
 
-### Story 1.E The runtime runs in production
+### Story: The runtime runs in production
 
-#### PR 1.7 API key, health and start page
+#### A7 API key, health and start page
 
 - **Scope**
   - `ApiKeyFilter`:
@@ -370,50 +405,52 @@ A Quarkus service that loads DMN models at runtime, keeps all their versions and
     - health stays open;
     - the editor page stays open.
   - `/q/health/ready` is DOWN until the models are loaded.
-- **Depends on**: 1.5.
+- **Depends on**: A5.
 - **Reference**: `.../runtime/api/ApiKeyFilter.java`, `ModelsHealthCheck.java`,
   `src/main/resources/META-INF/resources/index.html`.
 
-#### PR 1.8 Container image and Docker Compose
+#### A8 Container image and Docker Compose
 
 - **Scope**
-  - A multi-stage `Dockerfile`, built from the root of the repository because it compiles the core.
+  - A multi-stage `Dockerfile`, built from `rule-engine/runtime` alone.
   - The image runs as non-root user 1001, keeps its data in the volume `/data`, has a health check
     (`docker/healthcheck.sh`) and `JAVA_OPTS`, and carries `LICENSE` and `NOTICE`.
-  - `docker-compose.yml`: port 8090, `RULE_ENGINE_API_KEY`, a named volume, TLS options as comments.
-  - `.dockerignore`.
+  - `docker-compose.yml` in the root: build context `rule-engine/runtime`, port 8090, `RULE_ENGINE_API_KEY`, a named
+    volume, TLS options as comments.
+  - `.dockerignore` in `rule-engine/runtime`.
 - **Outcome**: one generic image for every customer; models are loaded at runtime, never built in.
 - **Acceptance**
   - `docker compose up -d --build` becomes healthy.
   - Versions survive `docker compose down` and `up`; `down -v` deletes them.
   - The container runs as uid 1001.
-- **Depends on**: 1.7.
-- **Reference**: `rule-engine-runtime/Dockerfile`, `rule-engine-runtime/docker/healthcheck.sh`,
-  `docker-compose.yml`.
+  - The image contains no class of the connector.
+- **Depends on**: A7.
+- **Reference**: `rule-engine/runtime/Dockerfile`, `rule-engine/runtime/docker/healthcheck.sh`,
+  `rule-engine/runtime/.dockerignore`, `docker-compose.yml`.
 
-#### PR 1.9 Performance baseline
+#### A9 Performance baseline
 
 - **Scope**: `PerformanceBaselineTest` in the Maven profile `performance`. It measures a decision table of 1,000
   rules with 2 inputs and hit policy FIRST, and writes `target/performance-baseline.md`.
 - **Outcome**: a baseline to compare against after a KIE or Quarkus upgrade.
 - **Acceptance**
-  - `mvn test -Pperformance -f rule-engine-runtime` writes the report: validate, compile, evaluation mean, p50,
+  - `mvn test -Pperformance -f rule-engine/runtime` writes the report: validate, compile, evaluation mean, p50,
     p95 and p99 in the engine and through REST, and the throughput with 8 clients.
   - The default build does not run it.
   - The numbers are in the root `README.md`.
-- **Depends on**: 1.5.
+- **Depends on**: A5.
 - **Reference**: `PerformanceBaselineTest.java`, the root `README.md` (Performance baseline).
 
 ---
 
-## F2 DMN editor page of the runtime
+## DMN editor page of the runtime
 
 The page `/editor/` of the runtime: the Apache KIE DMN editor, the one of the KIE extension for VS Code, plus a
 list of models and versions. It needs only a browser.
 
-### Story 2.A The runtime ships the KIE editor
+### Story: The runtime ships the KIE editor
 
-#### PR 2.1 Bundle the KIE DMN editor
+#### A10 Bundle the KIE DMN editor
 
 - **Scope**
   - The runtime build downloads `@kie-tools/dmn-editor-standalone` 10.2.0 from npm, checks its sha512, keeps it in
@@ -423,12 +460,12 @@ list of models and versions. It needs only a browser.
 - **Acceptance**
   - `EditorPageTest` checks that the KIE editor is bundled and that its script is served compressed.
   - A wrong checksum fails the build.
-- **Depends on**: 0.1.
-- **Reference**: `rule-engine-runtime/pom.xml` (`dmn.editor.*`, antrun), `EditorPageTest.java`.
+- **Depends on**: A8, whose `NOTICE` it extends.
+- **Reference**: `rule-engine/runtime/pom.xml` (`dmn.editor.*`, antrun), `EditorPageTest.java`.
 
-### Story 2.B Rule owners edit rules in the browser
+### Story: Rule owners edit rules in the browser
 
-#### PR 2.2 Editor page: open, check and save a model
+#### A11 Editor page: open, check and save a model
 
 - **Scope**
   - `editor/index.html`, `editor.js` and `editor.css`.
@@ -448,11 +485,11 @@ list of models and versions. It needs only a browser.
   - The editor smoke test covers the key prompt, opening a model, changing a rule, and saving and activating it
     (it becomes the active version). A model the runtime rejects shows its findings.
   - `EditorPageTest` checks the page and the link from the start page.
-- **Depends on**: 2.1, 1.6, 1.7.
-- **Reference**: `rule-engine-runtime/src/main/resources/META-INF/resources/editor/`,
+- **Depends on**: A6 and A10.
+- **Reference**: `rule-engine/runtime/src/main/resources/META-INF/resources/editor/`,
   `internal/editor-smoke/editor-smoke.mjs`, `internal/README.md`.
 
-#### PR 2.3 Editor page: versions
+#### A12 Editor page: versions
 
 - **Scope**: the list of versions of the selected model, with status, source and author. Open any version,
   activate it, roll back.
@@ -460,10 +497,10 @@ list of models and versions. It needs only a browser.
 - **Acceptance**
   - The smoke test activates the old version, then rolls back.
   - Each action shows the new active version.
-- **Depends on**: 2.2.
+- **Depends on**: A11.
 - **Reference**: `editor.js` (versions box, rollback).
 
-#### PR 2.4 Editor page: project files and new models
+#### A13 Editor page: project files and new models
 
 - **Scope**
   - **Open .dmn file…** and **Save file**: Chrome and Edge write the file back with the File System Access API,
@@ -471,19 +508,19 @@ list of models and versions. It needs only a browser.
   - **New model**, with a name dialog, stored as the first version of the new model.
 - **Outcome**: the `.dmn` file of a project can be changed without a Designer.
 - **Acceptance**: the smoke test writes a file back, and creates a new model.
-- **Depends on**: 2.2.
+- **Depends on**: A11.
 - **Reference**: `editor.js` (open-file, save-file, name-dialog).
 
 ---
 
-## F3 Client of the runtime
+## Client of the runtime
 
 The REST client of the connector, built like the HTTP layer of LangChain4j: a transport abstraction found through
 a service provider interface, with the Ivy REST client as the default transport.
 
-### Story 3.A Requests go through a replaceable transport
+### Story: Requests go through a replaceable transport
 
-#### PR 3.1 HTTP transport
+#### B1 HTTP transport
 
 - **Scope**
   - `client.http`:
@@ -501,13 +538,13 @@ a service provider interface, with the Ivy REST client as the default transport.
 - **Acceptance**
   - The loader finds the Ivy transport as the default.
   - `X-API-Key` and `Authorization` are masked in the logs.
-- **Depends on**: 0.1.
+- **Depends on**: F1.
 - **Reference**: `rule-engine/src/com/axonivy/utils/rule/engine/client/http/`,
   `src/META-INF/services/...HttpClientBuilderFactory`.
 
-### Story 3.B The connector calls the runtime with typed requests
+### Story: The connector calls the runtime with typed requests
 
-#### PR 3.2 Typed client, configuration and mock runtime
+#### B2 Typed client, configuration and mock runtime
 
 - **Scope**
   - `RuleEngineClient`:
@@ -516,35 +553,35 @@ a service provider interface, with the Ivy REST client as the default transport.
   - `Json`, and `ExceptionMapper`, which maps failures to `RuleEngineApiException` (with the code of the runtime and
     `isModelMissing`), `RuleEngineTimeoutException` and `RuleEngineUnreachableException`.
   - `RuleEngine.client()` and `RuleEngine.client(config)`: the entry point that builds the client from the
-    variables. PR 4.7 adds the rest of the Java API.
+    variables. PR B9 adds the rest of the Java API.
   - `RuleEngineConfig.fromVariables()` and `config/variables.yaml`:
     - `Url`, `ApiKey` (password), `TimeoutSeconds`, `ConnectTimeoutSeconds`;
     - `AutoDeploy`, `ModelPrefix`, `LogRequests`;
     - `runtimeModel()` adds the prefix.
   - `MockRuntime` in `rule-engine-test`: a stand-in for the runtime that tests program and that records every
     request.
-- **Outcome**: Java code in Ivy calls the runtime with the records of the core. Every later connector test uses
-  the mock runtime.
+- **Outcome**: Java code in Ivy calls the runtime with the records of the package `api`. Every later connector test
+  uses the mock runtime.
 - **Acceptance**: tests of `TestRuleEngineClient`:
   - evaluate sends the model, the decision and the input;
   - versions are managed;
   - an error answer becomes an API exception with the code of the runtime;
   - transport failures become timeout or unreachable;
   - the base URL is required.
-- **Depends on**: 0.2, 3.1.
+- **Depends on**: F2 and B1.
 - **Reference**: `rule-engine/src/.../client/`, `RuleEngineConfig.java`, `rule-engine/config/variables.yaml`,
   `rule-engine-test/src/.../mock/MockRuntime.java`, `TestRuleEngineClient.java`.
 
 ---
 
-## F4 Business Rule Task
+## Business Rule Task
 
 The program element that evaluates a DMN decision with process data, without code. Inputs and results are mapped
 by name.
 
-### Story 4.A The connector knows the DMN files of a project
+### Story: The connector knows the DMN files of a project
 
-#### PR 4.1 DMN files of a project
+#### B3 DMN files of a project
 
 - **Scope**
   - `ProjectDmnFiles` finds the `.dmn` files in the folder `dmn` of the project and of its required projects. In a
@@ -562,13 +599,13 @@ by name.
   - the files of a packed project are found;
   - a decision knows its inputs, also through other decisions;
   - a decision knows its results and their types.
-- **Depends on**: 0.1.
+- **Depends on**: B2: a test checks the editor link of its configuration.
 - **Reference**: `rule-engine/src/.../dmn/`, `TestProjectDmn.java`, the root `README.md` (decision "Packed
   projects").
 
-### Story 4.B Process data is mapped by name
+### Story: Process data is mapped by name
 
-#### PR 4.2 Mapping by name
+#### B4 Mapping by name
 
 - **Scope**
   - `FieldLocator` finds the field for a DMN name:
@@ -585,13 +622,13 @@ by name.
   - Ivy values become JSON and back;
   - fields are found by name;
   - fields are read without creating nested objects.
-- **Depends on**: 0.2.
+- **Depends on**: F2.
 - **Reference**: `rule-engine/src/.../mapping/`, `TestMapping.java`, the root `README.md` (decision "Mapping by
   name only").
 
-### Story 4.C A process evaluates a decision
+### Story: A process evaluates a decision
 
-#### PR 4.3 Program element and inscription mask
+#### B5 Program element and inscription mask
 
 - **Scope**
   - `BusinessRuleTask` with its icon, and the keys of its configuration (`Conf`).
@@ -600,7 +637,7 @@ by name.
     - `model › all decisions` appears only when a model has more than one decision;
     - an unreadable file shows a warning;
     - the last entry is **New DMN...**;
-    - group **New DMN**: name, input fields and output fields. F5 uses them.
+    - group **New DMN**: name, input fields and output fields. B10 and B11 use them.
   - The dropdown is the multi-select widget, and the first selected entry counts: the inscription API of 14.0.1 has
     no single select.
 - **Outcome**: the element can be placed in a process, and its decision selected.
@@ -609,11 +646,11 @@ by name.
     - the mask lists the files and their decisions;
     - the mask explains each group once.
   - The mask opens even when the files cannot be listed.
-- **Depends on**: 4.1.
+- **Depends on**: B3.
 - **Reference**: `BusinessRuleTask.java`, `program/internal/RuleTaskEditor.java`, `Conf.java`,
   `webContent/logo/business-rule-task.png`.
 
-#### PR 4.4 Evaluate the decision
+#### B6 Evaluate the decision
 
 - **Scope**
   - `RuleTaskExecutor`:
@@ -638,13 +675,13 @@ by name.
   - all supported types are sent as JSON;
   - a DMN error, an unknown model, an unreachable runtime and a timeout each raise their BPMN error;
   - an input without a field raises a mapping error.
-- **Depends on**: 3.2, 4.2, 4.3.
+- **Depends on**: B4 and B5.
 - **Reference**: `program/internal/RuleTaskExecutor.java`, `RuleErrors.java`, `rule-engine-test/process/RuleTest.p.json`,
   `TestBusinessRuleTask.java`.
 
-### Story 4.D The project's rules reach the runtime by themselves
+### Story: The project's rules reach the runtime by themselves
 
-#### PR 4.5 Register the DMN files as versions
+#### B7 Register the DMN files as versions
 
 - **Scope**
   - `ModelDeployer`:
@@ -662,10 +699,10 @@ by name.
   - MODEL_NOT_FOUND leads to one new registration and one retry;
   - with `AutoDeploy=false` nothing is registered;
   - the prefix is used.
-- **Depends on**: 4.4.
+- **Depends on**: B6.
 - **Reference**: `deploy/ModelDeployer.java`, `BusinessRuleTask.java` (`start`).
 
-#### PR 4.6 Inputs of the version that answers
+#### B8 Inputs of the version that answers
 
 - **Scope**
   - `ActiveVersionInputs` asks the runtime for the source and the inputs of the active version, at most every five
@@ -678,13 +715,13 @@ by name.
   - A Portal version with an extra input gets the value of the field of that name.
   - A project version that answers adds no inputs.
   - At most one extra evaluation happens.
-- **Depends on**: 4.5.
+- **Depends on**: B7.
 - **Reference**: `deploy/ActiveVersionInputs.java`, `RuleTaskExecutor.java` (`withInputsOfAnsweringVersion`), the root
   `README.md` (decision "Inputs of the version that answers").
 
-### Story 4.E A Rules UI can manage versions from Java
+### Story: A Rules UI can manage versions from Java
 
-#### PR 4.7 Java API `RuleEngine`
+#### B9 Java API `RuleEngine`
 
 - **Scope**: the rest of `RuleEngine`: `evaluate`, `versions`, `register`, `approve`, `activate` (now or at a
   date), `rollback`, `retire`, `deploy(project)`, and `export(model, version, project)`. Export writes the version
@@ -694,25 +731,25 @@ by name.
   - every method sends the right request;
   - `export` writes the file;
   - `deploy` returns the registered versions.
-- **Depends on**: 3.2, 4.5.
+- **Depends on**: B7.
 - **Reference**: `RuleEngine.java`, `rule-engine-product/README.md` (Java API for a Rules UI).
 
 ---
 
-## F5 New DMN from process data
+## New DMN from process data
 
 The user selects fields of the process data and gets a ready-to-edit `.dmn` file; only the rules are left to
 write.
 
-### Story 5.A A DMN model is generated from fields
+### Story: A DMN model is generated from fields
 
-#### PR 5.1 DMN generator
+#### A14 DMN generator
 
 - **Scope**
-  - In `rule-engine-core`, package `dmn.generator`, using only the JDK:
+  - In `rule-engine`, package `dmn.generator`, using only the JDK:
     - `DmnSpec`, `DmnField` and `DmnType`;
-    - `JavaTypeMapper`: maps types, also those of Ivy scripting, by their class name, so the core needs no Ivy
-      dependency;
+    - `JavaTypeMapper`: maps types, also those of Ivy scripting, by their class name, so the package needs no Ivy
+      API;
     - `BeanProperties`: fields with a public getter, in declaration order;
     - `DmnGenerator`.
   - The generated DMN 1.5 model has:
@@ -721,20 +758,22 @@ write.
     - item definitions: enums with allowed values, structures for nested data classes, collections for lists;
     - one result structure when there are several outputs;
     - a description, and a diagram layout (DMNDI).
-  - Test stubs of the Ivy scripting types in the runtime tests.
+  - Test stubs of the Ivy scripting types in the runtime tests. With them, an import of one of these types in
+    `dmn.generator` no longer breaks the tests: look for `ch.ivyteam` imports in review.
 - **Outcome**: a valid, executable model that opens cleanly in the editor.
 - **Acceptance**
   - The 17 tests of `GeneratedDmnTest`: every generated model passes the KIE validator and runs in `DmnCompiler`.
     They cover enums, nested classes, lists, null values, and FEEL-reserved names.
   - The test of `TestMapping` that maps an Ivy data class to DMN types.
   - Checked once by hand: the file opens in the KIE editor.
-- **Depends on**: 0.2, 1.1 (the tests use the compiler).
-- **Reference**: `rule-engine-core/src/.../dmn/generator/`, `rule-engine-runtime/src/test/.../generator/GeneratedDmnTest.java`,
-  `rule-engine-runtime/src/test/java/ch/ivyteam/ivy/scripting/objects/`.
+- **Depends on**: A1 (the tests use the compiler), and B4: a test of the mapping maps an Ivy data class to DMN
+  types.
+- **Reference**: `rule-engine/src/.../dmn/generator/`, `rule-engine/runtime/src/test/.../generator/GeneratedDmnTest.java`,
+  `rule-engine/runtime/src/test/java/ch/ivyteam/ivy/scripting/objects/`.
 
-### Story 5.B "New DMN..." in the Business Rule Task
+### Story: "New DMN..." in the Business Rule Task
 
-#### PR 5.2 New DMN when the element runs
+#### B10 New DMN when the element runs
 
 - **Scope**
   - `DmnCreator` writes `dmn/<name>.dmn` from the fields of the group New DMN, parsed by `FieldSelection` (comma or
@@ -752,10 +791,10 @@ write.
   - New DMN generates the file from the selected fields;
   - New DMN needs a name of its own;
   - New DMN refuses a selection that the mapping by name would not find again.
-- **Depends on**: 5.1, 4.4.
+- **Depends on**: B6 and A14.
 - **Reference**: `program/internal/DmnCreator.java`, `FieldSelection.java`, `RuleTaskExecutor.java` (`selection`).
 
-#### PR 5.3 New DMN in the Designer
+#### B11 New DMN in the Designer
 
 - **Scope**
   - `DesignTimeCreation.createPending`: when any inscription mask of the project opens, the file of every element
@@ -764,21 +803,21 @@ write.
   - The README explains why: version 14.0.1 has no change event.
 - **Outcome**: select New DMN, open the mask again, and the decision is there and selected.
 - **Acceptance**: the test of `TestProjectDmn` that creates a new DMN also checks that it is selected afterwards.
-- **Depends on**: 5.2.
+- **Depends on**: B10.
 - **Reference**: `program/internal/DesignTimeCreation.java`, `BusinessRuleTask.java` (`migrateConfig`), the root
   `README.md` (decision "New DMN...").
 
 ---
 
-## F6 Rule Management bridge
+## Rule Management bridge
 
 The connector side of the Portal tab. The Portal has no dependency on the rule engine: it finds a callable
 sub process by its signatures in the security context, the way it finds Smart Workflow. Everything that crosses is
 a JDK type (String, Integer, Boolean, List, Map), and every start answers `result` and `error`.
 
-### Story 6.A Rules can be read and changed through a Portal-neutral contract
+### Story: Rules can be read and changed through a Portal-neutral contract
 
-#### PR 6.1 Bridge: read rules
+#### B12 Bridge: read rules
 
 - **Scope**
   - The callable `process/Portal/RuleManagement.p.json`, with the starts:
@@ -791,7 +830,8 @@ a JDK type (String, Integer, Boolean, List, Map), and every start answers `resul
     FAILED), `message` and `details`.
   - The model prefix is added and removed here. Models of other applications are left out. Project files that the
     runtime does not know yet are listed. Content falls back to the project file.
-  - **This PR fixes all eight signatures**, including those PR 6.2 implements, so F7 can build against them.
+  - **This PR fixes all eight signatures**, including those PR B13 implements, so the Portal tab,
+    A15 to A18, can build against them.
 - **Outcome**: the Portal can show what rules exist.
 - **Acceptance**: tests of `TestRuleManagement`:
   - the Portal finds every call in the security context;
@@ -802,11 +842,11 @@ a JDK type (String, Integer, Boolean, List, Map), and every start answers `resul
   - a model that is not on the runtime is read from its project;
   - versions come newest first;
   - an unreachable runtime is an error, not an exception.
-- **Depends on**: 3.2, 4.1.
+- **Depends on**: B3.
 - **Reference**: `rule-engine/process/Portal/RuleManagement.p.json`, `rule-engine/src/.../portal/RuleManagement.java`,
   `TestRuleManagement.java`, the root `README.md` (Rule Management in the Portal).
 
-#### PR 6.2 Bridge: change rules
+#### B13 Bridge: change rules
 
 - **Scope**: `ruleManagementValidate(String)`, `ruleManagementSave(String,String,String,String,Boolean)` (a new
   version with source PORTAL, as draft or live), `ruleManagementActivate(String,Integer,String)` and
@@ -818,12 +858,12 @@ a JDK type (String, Integer, Boolean, List, Map), and every start answers `resul
   - a model with errors is refused with the findings;
   - activate, and roll back;
   - validate.
-- **Depends on**: 6.1.
+- **Depends on**: B12.
 - **Reference**: `RuleManagement.java` (`validate`, `save`, `activate`, `rollback`).
 
-### Story 6.B The engine serves the editor
+### Story: The engine serves the editor
 
-#### PR 6.3 Editor script served by the engine
+#### B14 Editor script served by the engine
 
 - **Scope**
   - `DmnEditorScript`, the REST resource `{app}/api/rule-engine/dmn-editor/dmn-editor.js`:
@@ -837,23 +877,23 @@ a JDK type (String, Integer, Boolean, List, Map), and every start answers `resul
 - **Acceptance**
   - The test of `TestRuleManagement` checks that the editor script comes from the runtime.
   - A second request with the ETag answers 304.
-- **Depends on**: 2.1, 6.1.
+- **Depends on**: A10 and B12.
 - **Reference**: `rule-engine/src/.../portal/DmnEditorScript.java`, the root `README.md` (decision "Portal editor in
   the engine, not the runtime").
 
 ---
 
-## F7 Rule Management tab in the Portal
+## Rule Management tab in the Portal
 
 Axon Ivy Portal 14.0.1 with the tab **Rule Management** in its Admin Settings, for Portal administrators. It is
 not part of the Maven reactor: build it with `mvn install -f portal-components` and `mvn verify -f portal`.
 
-The Portal is first imported unchanged (PR 7.1). Every later Portal PR is a change on top of that import, so the diff
+The Portal is first imported unchanged (PR F3). Every later Portal PR is a change on top of that import, so the diff
 against it shows everything the rule engine needs in the Portal, and nothing else.
 
-### Story 7.A The Portal is in the repository, unchanged
+### Story: The Portal is in the repository, unchanged
 
-#### PR 7.1 Import Portal 14.0.1 unchanged
+#### F3 Import Portal 14.0.1 unchanged
 
 - **Scope**
   - Copy the projects `portal` and `portal-components` from the original Portal repository (`axonivy-market/portal`),
@@ -870,14 +910,14 @@ against it shows everything the rule engine needs in the Portal, and nothing els
   - `mvn install -f portal-components` and `mvn verify -f portal` pass.
   - The Portal starts on an engine and works as the original release.
   - The PR is one commit, so `git diff <that commit> -- portal portal-components` lists every later Portal change.
-- **Depends on**: nothing. It can be merged at any time before 7.2.
+- **Depends on**: nothing. It can be merged at any time before A15.
 - **Reference**: `portal/pom.xml` and `portal-components/pom.xml` (version 14.0.1.2).
 - **Review note**: the PR has about 1,800 files but needs no review line by line. Reviewers check that it equals the
   release, and that it builds.
 
-### Story 7.B The tab appears only where the rule engine is
+### Story: The tab appears only where the rule engine is
 
-#### PR 7.2 Detect the rule engine and show the tab
+#### A15 Detect the rule engine and show the tab
 
 - **Scope**
   - `RuleEngineBridge.isAvailable()`: `SubProcessCallStartEvent.find` with `SearchScope.SECURITY_CONTEXT` for
@@ -891,14 +931,14 @@ against it shows everything the rule engine needs in the Portal, and nothing els
   - Without the rule engine in the security context, Admin Settings are unchanged.
   - With it, a Portal administrator sees the tab.
   - The Portal has no compile dependency on the rule engine.
-- **Depends on**: 7.1, and the signatures fixed in 6.1. Until 6.1 is merged, test against a stub callable with the
+- **Depends on**: F3, and the signatures fixed in B12. Until B12 is merged, test against a stub callable with the
   same signatures.
 - **Reference**: `portal/src/com/axonivy/portal/rule/`, `portal/src/ch/ivy/addon/portalkit/bean/AdminSettingBean.java`,
   `portal/dialog/ch/ivy/addon/portalkit/admin/AdminSettings/AdminSettings.xhtml`.
 
-### Story 7.C Administrators see the rules
+### Story: Administrators see the rules
 
-#### PR 7.3 The table of rules
+#### A16 The table of rules
 
 - **Scope**
   - The component `RuleManagement` (xhtml, process, data) and `RuleManagementBean`.
@@ -912,16 +952,16 @@ against it shows everything the rule engine needs in the Portal, and nothing els
 - **Acceptance**
   - Models of the runtime and project files are both listed.
   - A runtime that is down shows a message; the page still works.
-- **Depends on**: 7.2, 6.1.
+- **Depends on**: A15.
 - **Reference**: `portal/dialog/com/axonivy/portal/component/RuleManagement/`, `portal/src/com/axonivy/portal/bean/RuleManagementBean.java`,
   `portal/cms/cms_*.yaml` (`RuleManagement`).
 
-### Story 7.D Administrators change the rules
+### Story: Administrators change the rules
 
-#### PR 7.4 Edit a model in the Portal
+#### A17 Edit a model in the Portal
 
 - **Scope**
-  - `rule-management.js` loads the editor script from the link on the engine (6.3).
+  - `rule-management.js` loads the editor script from the link on the engine (B14).
   - **Edit** opens the active version.
   - **Check** shows the findings.
   - **Save as draft** and **Save and activate** store a version with the Portal user as author and a description.
@@ -932,10 +972,10 @@ against it shows everything the rule engine needs in the Portal, and nothing els
     process uses it.
   - A model with errors is refused, with its findings.
   - The browser makes no request to the runtime.
-- **Depends on**: 7.3, 6.2, 6.3.
+- **Depends on**: B13, B14 and A16.
 - **Reference**: `portal/webContent/resources/js/rule-management.js`, `RuleManagementBean.java` (`edit`, `save`, `validate`).
 
-#### PR 7.5 Versions of a model in the Portal
+#### A18 Versions of a model in the Portal
 
 - **Scope**
   - **Show versions** lists the versions newest first, with status, source, author, description, created,
@@ -945,19 +985,19 @@ against it shows everything the rule engine needs in the Portal, and nothing els
 - **Acceptance**
   - Activating an older version makes it answer the next evaluation.
   - Rollback goes back to the version before.
-- **Depends on**: 7.4.
+- **Depends on**: A17.
 - **Reference**: `RuleManagementBean.java` (`showVersions`, `editVersion`, `activate`, `rollback`).
 
 ---
 
-## F8 Demo
+## Demo
 
 An invoice with five lines whose discount is decided by one decision table, from the customer tier and the order
 amount. In the demo, the rules can only be read: they are changed in the Portal.
 
-### Story 8.A An invoice is priced by the rules
+### Story: An invoice is priced by the rules
 
-#### PR 8.1 Invoice pricing process
+#### B15 Invoice pricing process
 
 - **Scope**
   - The data classes `Invoice`, `InvoiceLine` and `InvoicePricingData`, and `InvoiceSamples.standard()`.
@@ -977,13 +1017,14 @@ amount. In the demo, the rules can only be read: they are changed in the Portal.
     - the discount is rounded to the cent;
     - a rule engine error is answered, not thrown.
   - The sample (Silver, 9,200) gets 2 % and a total of 9,016.00.
-- **Depends on**: 4.4.
+- **Depends on**: B7, whose `ModelDeployer` its test resets, and B12, whose test now also lists the model of the
+  demo.
 - **Reference**: `rule-engine-demo/process/InvoicePricing.p.json`, `rule-engine-demo/dmn/invoice-discount.dmn`,
   `rule-engine-demo/dataclass/`, `TestInvoicePricing.java`.
 
-### Story 8.B Users see what decided
+### Story: Users see what decided
 
-#### PR 8.2 Demo dialog
+#### B16 Demo dialog
 
 - **Scope**
   - The start `InvoicePricingDemo`, "Rule Engine Demo: invoice discount".
@@ -999,11 +1040,11 @@ amount. In the demo, the rules can only be read: they are changed in the Portal.
   - Gold instead of Silver gives 5 %.
   - 5 laptops instead of 4 make an order of 10,400, and the rule for 10,000 or more decides.
   - With the runtime stopped, the error panel shows the code and the message.
-- **Depends on**: 8.1.
+- **Depends on**: B15.
 - **Reference**: `rule-engine-demo/dialog/.../InvoicePricingDialog/`, `rule-engine-demo/process/InvoicePricingDemo.p.json`,
   `rule-engine-demo/webContent/layouts/`.
 
-#### PR 8.3 Show the table that decided
+#### B17 Show the table that decided
 
 - **Scope**
   - `DiscountTable` reads the table of the version that decided: from the runtime with `content`, or from the
@@ -1019,16 +1060,16 @@ amount. In the demo, the rules can only be read: they are changed in the Portal.
     - the table of the project file;
     - the rule that decided is the first with the result;
     - a column added by a rule owner.
-- **Depends on**: 8.2, 4.7.
+- **Depends on**: B9 and B16.
 - **Reference**: `rule-engine-demo/src/.../demo/`, `TestDiscountTable.java`.
 
 ---
 
-## F9 Delivery
+## Delivery
 
-### Story 9.A The product can be installed from the Market
+### Story: The product can be installed from the Market
 
-#### PR 9.1 Market product
+#### B18 Market product
 
 - **Scope**
   - `rule-engine-product`:
@@ -1043,15 +1084,15 @@ amount. In the demo, the rules can only be read: they are changed in the Portal.
 - **Acceptance**
   - The zip contains the README with the placeholders replaced, `docker-compose.yml` and `openapi.yaml`.
   - Installing the product in a Designer imports the demo and adds the dependency.
-- **Depends on**: 8.2, since it documents the demo and every feature before it.
+- **Depends on**: B16, since it documents the demo and every feature before it.
 - **Reference**: `rule-engine-product/`.
 
-### Story 9.B It works against the real container
+### Story: It works against the real container
 
-#### PR 9.2 Container test harness
+#### A19 Container test harness
 
 - **Scope**
-  - `RuleEngineContainerTest` with Testcontainers, in the Maven profile `container.test`, against the image of 1.8.
+  - `RuleEngineContainerTest` with Testcontainers, in the Maven profile `container.test`, against the image of A8.
   - The first scenarios:
     - the runtime is ready;
     - a wrong API key is answered as an error;
@@ -1061,10 +1102,10 @@ amount. In the demo, the rules can only be read: they are changed in the Portal.
 - **Acceptance**
   - `docker compose build`, then `mvn verify -Pcontainer.test -pl rule-engine-test -am`: the scenarios pass.
   - The default `mvn verify` does not run them.
-- **Depends on**: 1.8, 4.5.
+- **Depends on**: A8 for the image, and B15: the tests run the demo process.
 - **Reference**: `rule-engine-test/src_test/.../RuleEngineContainerTest.java`, `rule-engine-test/pom.xml`.
 
-#### PR 9.3 End-to-end scenarios
+#### A20 End-to-end scenarios
 
 - **Scope**: the rest of `RuleEngineContainerTest`:
   - the demo invoice is decided by the table, and another tier is decided by another rule;
@@ -1076,5 +1117,5 @@ amount. In the demo, the rules can only be read: they are changed in the Portal.
   - The scenario files live in `src_test/.../scenario/`.
 - **Outcome**: milestone M4: the promises of the product README are tested end to end.
 - **Acceptance**: all 10 container tests pass.
-- **Depends on**: 9.2, 4.6, 4.7, 5.1, 8.1.
+- **Depends on**: B8, A14, B17 and A19.
 - **Reference**: `RuleEngineContainerTest.java`, `rule-engine-test/src_test/.../scenario/`.
