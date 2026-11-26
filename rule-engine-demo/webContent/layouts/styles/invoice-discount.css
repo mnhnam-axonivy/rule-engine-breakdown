@@ -47,6 +47,14 @@
 .ip-muted { color: var(--ip-muted); }
 .ip-num { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
 .ip-reason { display: block; font-size: 0.8rem; color: var(--ip-muted); line-height: 1.3; }
+.ip-tag {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--ip-subtle);
+  color: var(--ip-muted);
+  border: 1px solid var(--ip-border);
+}
 .demo-content code {
   font-family: ui-monospace, "Cascadia Code", Consolas, "Liberation Mono", monospace;
   font-size: 0.85rem;
@@ -76,6 +84,7 @@
   border-bottom: 1px solid var(--ip-border);
 }
 .ip-total { font-weight: 700; font-size: 1.1rem; border-bottom: none; padding-top: 12px; }
+.ip-delta { margin-top: 8px; font-size: 0.85rem; color: var(--ip-muted); }
 
 .ip-error {
   margin: 0 0 16px;
@@ -84,3 +93,21 @@
   background: var(--ip-subtle);
   border-radius: 4px;
 }
+
+/* The decision table, drawn like in a DMN editor: inputs, a double line, outputs. */
+.ip-scroll { overflow-x: auto; }
+.ip-dmn { width: 100%; border-collapse: collapse; }
+.ip-dmn th, .ip-dmn td {
+  text-align: left;
+  padding: 6px 10px;
+  border: 1px solid var(--ip-border);
+  white-space: nowrap;
+}
+.ip-dmn th { font-weight: 600; font-size: 0.85rem; }
+.ip-dmn-in { background: var(--ip-subtle); }
+.ip-dmn-out { background: var(--ip-subtle); color: var(--ip-primary); }
+.ip-dmn .ip-dmn-split { border-left: 3px double var(--ip-muted); }
+.ip-dmn .ip-dmn-no { width: 2.5rem; text-align: center; color: var(--ip-muted); }
+.ip-dmn-matched td { background: var(--ip-match); }
+.ip-dmn-matched td:first-child { box-shadow: inset 4px 0 0 var(--ip-match-edge); color: var(--ip-text); font-weight: 600; }
+.ip-try { margin: 12px 0 0; line-height: 1.6; }
