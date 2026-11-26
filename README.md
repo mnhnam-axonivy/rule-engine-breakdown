@@ -27,6 +27,23 @@ This repository is built pull request by pull request, following [BREAKDOWN.md](
 | [rule-engine-demo](rule-engine-demo) | The demo. |
 | [rule-engine-test](rule-engine-test) | Tests of the connector. |
 
+## Run it
+
+```
+docker compose up -d --build      # decision runtime on http://localhost:8090
+```
+
+The runtime is ready when `http://localhost:8090/q/health/ready` is UP. The API is described at
+`http://localhost:8090/q/swagger-ui`. Load a model and evaluate it:
+
+```
+curl -X POST -H "Content-Type: application/xml" --data-binary @discount.dmn      http://localhost:8090/api/models/discount/versions
+curl -X POST -H "Content-Type: application/json"      -d '{"decision":"discount","input":{"customerTier":"Gold","orderAmount":12000}}'      http://localhost:8090/api/models/discount/evaluate
+```
+
+Every input of the decisions it needs must be in `input`, `null` if it has no value. Set `RULE_ENGINE_API_KEY` to
+protect the API; the versions live in the volume `rule-engine-data`.
+
 ## Build and test
 
 Java 25 and Maven. The Ivy modules are built with the project-build-plugin, which runs the tests in an Ivy engine.
@@ -34,6 +51,7 @@ Java 25 and Maven. The Ivy modules are built with the project-build-plugin, whic
 | Command | What runs |
 | --- | --- |
 | `mvn verify` | Everything without Docker. |
+| `docker compose build` | The image `axonivy/rule-engine-runtime:dev`, built from `rule-engine/runtime`. |
 | `mvn quarkus:dev -f rule-engine/runtime` | Runtime in dev mode on port 8090. |
 
 ## Spike result: runtime loading (MARP-4893)
