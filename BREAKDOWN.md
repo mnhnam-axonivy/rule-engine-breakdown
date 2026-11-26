@@ -230,10 +230,11 @@ builds on it.
   - The records of both sides turn into the JSON that `openapi.yaml` describes and back again (unit tests in the
     runtime module, whose tests compile the records of the connector too).
   - Renaming a field, or adding an enum constant, on one side only makes `ContractTest` fail. Try it once in review.
-  - `FeelNames` has unit tests:
-    - names reserved in FEEL are renamed;
+  - `FeelNames` and `BeanProperties` have unit tests:
+    - names reserved in FEEL are renamed, and found back;
     - names of built-in functions keep their name;
-    - `Risk Level` finds `riskLevel`.
+    - field paths get the shortest name that is unique;
+    - data class properties are found in declaration order.
 - **Depends on**: F1.
 - **Reference**: `rule-engine/runtime/src/main/java/.../runtime/api/model/`,
   `rule-engine/src/com/axonivy/utils/rule/engine/api/`, `rule-engine/src/.../dmn/generator/FeelNames.java`,
@@ -620,7 +621,7 @@ by name.
 - **Acceptance**: tests of `TestMapping`:
   - data class properties are found in declaration order;
   - Ivy values become JSON and back;
-  - fields are found by name;
+  - fields are found by name, also when only case and blanks differ (`Risk Level` finds `riskLevel`);
   - fields are read without creating nested objects.
 - **Depends on**: F2.
 - **Reference**: `rule-engine/src/.../mapping/`, `TestMapping.java`, the root `README.md` (decision "Mapping by
